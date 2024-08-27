@@ -9,7 +9,7 @@ use utils::{BiblatexUtils, CoreUtils};
 ///
 /// ## Usage
 ///
-/// Add the create to your `Cargo.toml` and use it as shown below:
+/// Add the crate to your `Cargo.toml` and use it as shown below:
 ///
 /// ```toml
 /// [dependencies]

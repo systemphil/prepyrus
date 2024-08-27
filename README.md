@@ -8,7 +8,7 @@ that contain citations in Chicago author-date style and certain metadata.
 
 ## Usage
 
-Add the create to your `Cargo.toml` and use it as shown below:
+Add the crate to your `Cargo.toml` and use it as shown below:
 
 ```toml
 [dependencies]
