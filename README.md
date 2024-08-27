@@ -80,6 +80,10 @@ Only the following metadata fields are supported:
 - editor
 - contributor
 
+## Examples
+
+To see a working implementation of prepyrus, please visit the [sPhil repo](https://github.com/systemphil/sphil).
+
 ## License
 
 Apache-2.0
