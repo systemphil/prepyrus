@@ -1,0 +1,25 @@
+[package]
+name = "prepyrus"
+authors = ["Firgrep <code@filipniklas.com>"]
+license = "Apache-2.0"
+description = "Parsing and writing to MDX files for Chicago author-date citaitons using BibTeX"
+repository = "https://github.com/systemphil/prepyrus"
+readme = "README.md"
+categories = ["database", "parser-implementations", "text-processing"]
+keywords = [
+    "bibtex",
+    "biblatex",
+    "biber",
+    "bibliography",
+    "mdx",
+    "chicago",
+    "citation",
+]
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+biblatex = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.8"
+regex = "1.10.5"
