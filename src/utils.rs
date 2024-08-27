@@ -26,9 +26,26 @@ impl BiblatexUtils {
         }
     }
 
-    /// Use this to extract from a Spanned<Chunk> vector
-    /// ```
-    /// let address = extract_spanned_chunk(&address_spanned);
+    /// Use this to extract from a `Spanned<Chunk>` vector
+    ///
+    /// ```rust
+    /// use biblatex::{Chunk, Entry, EntryType, Spanned};
+    /// use prepyrus::utils::BiblatexUtils;
+    ///
+    /// // Mocking a Spanned<Chunk> vector
+    /// let address_spanned: &[Spanned<Chunk>] = &[
+    ///     Spanned {
+    ///         v: Chunk::Normal("123 Fake Street".into()),
+    ///         span: Default::default(),
+    ///     },
+    ///     Spanned {
+    ///         v: Chunk::Normal("Springfield".into()),
+    ///         span: Default::default(),
+    ///     },
+    /// ];
+    ///
+    /// let address: String = BiblatexUtils::extract_spanned_chunk(&address_spanned);
+    /// assert_eq!(address, "123 Fake StreetSpringfield");
     /// ```
     pub fn extract_spanned_chunk(spanned_chunk: &[Spanned<Chunk>]) -> String {
         spanned_chunk
