@@ -6,15 +6,7 @@ description = "Parsing and writing to MDX files for Chicago author-date citaiton
 repository = "https://github.com/systemphil/prepyrus"
 readme = "README.md"
 categories = ["database", "parser-implementations", "text-processing"]
-keywords = [
-    "bibtex",
-    "biblatex",
-    "biber",
-    "bibliography",
-    "mdx",
-    "chicago",
-    "citation",
-]
+keywords = ["bibtex", "biblatex", "mdx", "chicago author-date", "citation"]
 version = "0.1.0"
 edition = "2021"
 
