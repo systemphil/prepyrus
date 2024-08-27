@@ -84,6 +84,10 @@ Only the following metadata fields are supported:
 
 To see a working implementation of prepyrus, please visit the [sPhil repo](https://github.com/systemphil/sphil).
 
+## Acknowledgements
+
+Thanks to Typst's [biblatex](https://github.com/typst/biblatex) package for providing an awesome library for parsing BibTex files, the people behind serde and regex Rust crates and the Rust community!
+
 ## License
 
 Apache-2.0

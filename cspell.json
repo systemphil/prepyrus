@@ -9,7 +9,9 @@
         "eprintln",
         "Prepyrus",
         "println",
-        "splitn"
+        "serde",
+        "splitn",
+        "Typst"
     ],
     "ignoreWords": [],
     "import": []
