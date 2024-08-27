@@ -41,9 +41,10 @@ The function takes three arguments: `<bibliography.bib> <target_dir_or_file> <mo
 - a target directory or .mdx file,
 - and a mode (either `verify` or `process`).
 
-  `verify` mode only verifies the citations in the MDX files against the bibliography.
-  **⚠️ NOTE: This mode modifies the MDX files.**  
-  `process` mode _additionally_ processes the MDX files by injecting bibliography and other details into the MDX files.
+`verify` mode only verifies the citations in the MDX files against the bibliography.
+
+**⚠️ NOTE: `process` mode modifies the MDX files.**  
+`process` mode _additionally_ processes the MDX files by injecting bibliography and other HTML details into the MDX files.
 
 ## Description
 

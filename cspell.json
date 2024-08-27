@@ -8,6 +8,7 @@
         "datetime",
         "eprintln",
         "Prepyrus",
+        "println",
         "splitn"
     ],
     "ignoreWords": [],
