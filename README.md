@@ -61,13 +61,6 @@ by adding a bibliography section at the end of the file.
 It also adds author, editor, and contributor from the MDX file metadata if available.
 Finally, it also adds a notes heading at the end if footnotes are present in the file.
 
-The tool has two modes: `verify` and `process`.
-
-In `verify` mode, the tool only verifies the citations in the MDX files
-and matches them against the bibliography.  
-In `process` mode, the tool _additionally_ processes the MDX files by injecting bibliography
-and other details into the MDX files.
-
 ## Limitations
 
 The tool currently only supports citations in Chicago author-date style.
