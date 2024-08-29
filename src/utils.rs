@@ -72,6 +72,12 @@ impl BiblatexUtils {
     }
 }
 
+pub struct VerifiedConfig {
+    pub bib_file: String,
+    pub target_path: String,
+    pub mode: String,
+}
+
 impl CoreUtils {
     pub fn extract_paths(path: &str) -> io::Result<Vec<String>> {
         let exceptions = vec![
@@ -93,7 +99,7 @@ impl CoreUtils {
         Ok(mdx_paths)
     }
 
-    pub fn verify_arguments(args: &Vec<String>) {
+    pub fn verify_config(args: &Vec<String>) -> VerifiedConfig {
         if args.len() < 3 {
             eprintln!("Arguments missing: <bibliography.bib> <target_dir_or_file> <mode>");
             std::process::exit(1);
@@ -111,6 +117,14 @@ impl CoreUtils {
             eprintln!("Invalid mode. Please provide either 'verify' or 'process'.");
             std::process::exit(1);
         }
+
+        let config = VerifiedConfig {
+            bib_file: args[0].clone(),
+            target_path: args[1].clone(),
+            mode: args[2].clone(),
+        };
+
+        config
     }
 
     /// Excavates all MDX files in a directory and its subdirectories

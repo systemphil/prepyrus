@@ -85,41 +85,37 @@ pub mod inserter;
 pub mod utils;
 pub mod validator;
 
+use std::io::Error;
+
+use biblatex::Entry;
 use utils::{BiblatexUtils, CoreUtils};
+use validator::ArticleFileData;
 
-/// Main API entry point for running Prepyrus.
-///
-/// ## Example
-/// ```
-/// let bib_src_file = "tests/mocks/test.bib";
-/// let target_path = "tests/mocks/data";
-/// let mode = "verify";
-///
-/// use prepyrus::run_prepyrus;
-/// let result = run_prepyrus(bib_src_file, target_path, mode);
-/// assert!(result.is_ok());
-/// ```
-pub fn run_prepyrus(
-    bib_file: &str,
-    target_path: &str,
-    mode: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    CoreUtils::verify_arguments(&vec![
-        bib_file.to_string(),
-        target_path.to_string(),
-        mode.to_string(),
-    ]);
+pub struct Prepyrus {}
 
-    let all_entries = BiblatexUtils::retrieve_bibliography_entries(bib_file)?;
-    let mdx_paths = CoreUtils::extract_paths(target_path)?;
-
-    // Phase 1: Verify MDX files
-    let articles_file_data = validator::verify_mdx_files(mdx_paths.clone(), &all_entries)?;
-
-    // Phase 2: Process MDX files (requires mode to be set to "process")
-    if mode == "process" {
-        inserter::process_mdx_files(articles_file_data);
+impl Prepyrus {
+    pub fn verify_config(args: &Vec<String>) -> utils::VerifiedConfig {
+        CoreUtils::verify_config(args)
     }
 
-    Ok(())
+    pub fn get_all_bib_entries(
+        bib_file: &str,
+    ) -> Result<Vec<biblatex::Entry>, Box<dyn std::error::Error>> {
+        Ok(BiblatexUtils::retrieve_bibliography_entries(bib_file)?)
+    }
+
+    pub fn get_mdx_paths(target_path: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        Ok(CoreUtils::extract_paths(target_path)?)
+    }
+
+    pub fn verify(
+        mdx_paths: Vec<String>,
+        all_entries: &Vec<Entry>,
+    ) -> Result<Vec<ArticleFileData>, Error> {
+        validator::verify_mdx_files(mdx_paths, &all_entries)
+    }
+
+    pub fn process(all_articles: Vec<ArticleFileData>) {
+        inserter::process_mdx_files(all_articles)
+    }
 }

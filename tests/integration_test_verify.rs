@@ -1,19 +1,47 @@
-use prepyrus::run_prepyrus;
+use prepyrus::{utils::VerifiedConfig, Prepyrus};
 
 #[test]
 fn run_verify_with_directory() {
-    let result = run_prepyrus("tests/mocks/test.bib", "tests/mocks/data", "verify");
-    println!("{:?}", result);
-    assert!(result.is_ok());
+    let args = vec![
+        "tests/mocks/test.bib".to_string(),
+        "tests/mocks/data".to_string(),
+        "verify".to_string(),
+    ];
+    let VerifiedConfig {
+        bib_file,
+        target_path,
+        mode,
+    } = Prepyrus::verify_config(&args);
+
+    let all_entries = Prepyrus::get_all_bib_entries(&bib_file).unwrap();
+    let mdx_paths = Prepyrus::get_mdx_paths(&target_path).unwrap();
+    let articles_file_data = Prepyrus::verify(mdx_paths, &all_entries).unwrap();
+
+    println!("{:?}", articles_file_data);
+    assert!(mode == "verify");
+    assert!(articles_file_data.len() > 1);
+    assert!(!articles_file_data.is_empty());
 }
 
 #[test]
 fn run_verify_with_single_file() {
-    let result = run_prepyrus(
-        "tests/mocks/test.bib",
-        "tests/mocks/data/science-of-logic-introduction.mdx",
-        "verify",
-    );
-    println!("{:?}", result);
-    assert!(result.is_ok());
+    let args = vec![
+        "tests/mocks/test.bib".to_string(),
+        "tests/mocks/data/science-of-logic-introduction.mdx".to_string(),
+        "verify".to_string(),
+    ];
+    let VerifiedConfig {
+        bib_file,
+        target_path,
+        mode,
+    } = Prepyrus::verify_config(&args);
+
+    let all_entries = Prepyrus::get_all_bib_entries(&bib_file).unwrap();
+    let mdx_paths = Prepyrus::get_mdx_paths(&target_path).unwrap();
+    let articles_file_data = Prepyrus::verify(mdx_paths, &all_entries).unwrap();
+
+    println!("{:?}", articles_file_data);
+    assert!(mode == "verify");
+    assert!(articles_file_data.len() == 1);
+    assert!(!articles_file_data.is_empty());
 }
