@@ -1,4 +1,4 @@
-use prepyrus::{utils::VerifiedConfig, Prepyrus};
+use prepyrus::{Prepyrus, VerifiedConfig};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

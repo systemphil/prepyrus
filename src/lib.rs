@@ -87,14 +87,14 @@ pub mod validator;
 
 use std::io::Error;
 
+pub use crate::utils::VerifiedConfig;
 use biblatex::Entry;
 use utils::{BiblatexUtils, CoreUtils};
 use validator::ArticleFileData;
-
 pub struct Prepyrus {}
 
 impl Prepyrus {
-    pub fn verify_config(args: &Vec<String>) -> utils::VerifiedConfig {
+    pub fn verify_config(args: &Vec<String>) -> VerifiedConfig {
         CoreUtils::verify_config(args)
     }
 
