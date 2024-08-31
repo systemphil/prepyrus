@@ -7,17 +7,12 @@ use std::io::{self, BufReader, Error, Read};
 
 #[derive(Debug, Deserialize)]
 pub struct Metadata {
-    #[allow(dead_code)]
     pub title: String,
-    #[allow(dead_code)]
     pub description: String,
     #[serde(rename = "isArticle")]
     pub is_article: bool,
-    #[allow(dead_code)]
     pub authors: Option<String>,
-    #[allow(dead_code)]
     pub editors: Option<String>,
-    #[allow(dead_code)]
     pub contributors: Option<String>,
 }
 

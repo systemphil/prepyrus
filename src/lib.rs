@@ -87,25 +87,29 @@ pub mod validator;
 
 use std::io::Error;
 
-pub use crate::utils::VerifiedConfig;
+pub use crate::utils::Config;
 use biblatex::Entry;
-use utils::{BiblatexUtils, CoreUtils};
+use utils::{BiblatexUtils, BibliographyError, LoadOrCreateSettingsTestMode, Utils};
 use validator::ArticleFileData;
 pub struct Prepyrus {}
 
 impl Prepyrus {
-    pub fn verify_config(args: &Vec<String>) -> VerifiedConfig {
-        CoreUtils::verify_config(args)
+    pub fn verify_config(
+        args: &Vec<String>,
+        test_mode: Option<LoadOrCreateSettingsTestMode>,
+    ) -> Result<Config, &'static str> {
+        Utils::verify_config(args, test_mode)
     }
 
-    pub fn get_all_bib_entries(
-        bib_file: &str,
-    ) -> Result<Vec<biblatex::Entry>, Box<dyn std::error::Error>> {
+    pub fn get_all_bib_entries(bib_file: &str) -> Result<Vec<biblatex::Entry>, BibliographyError> {
         Ok(BiblatexUtils::retrieve_bibliography_entries(bib_file)?)
     }
 
-    pub fn get_mdx_paths(target_path: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-        Ok(CoreUtils::extract_paths(target_path)?)
+    pub fn get_mdx_paths(
+        target_path: &str,
+        ignore_paths: Option<Vec<String>>,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        Ok(Utils::extract_paths(target_path, ignore_paths)?)
     }
 
     pub fn verify(

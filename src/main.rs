@@ -1,24 +1,29 @@
-use prepyrus::{Prepyrus, VerifiedConfig};
+use prepyrus::Prepyrus;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    let VerifiedConfig {
-        bib_file,
-        target_path,
-        mode,
-    } = Prepyrus::verify_config(&args);
+    let _ = run(args).unwrap_or_else(|e| {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
+    });
 
-    let all_entries = Prepyrus::get_all_bib_entries(&bib_file).unwrap();
-    let mdx_paths = Prepyrus::get_mdx_paths(&target_path).unwrap();
+    println!("===Prepyrus completed successfully!");
+}
+
+fn run(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+    let config = Prepyrus::verify_config(&args, None)?;
+    let all_entries = Prepyrus::get_all_bib_entries(&config.bib_file).unwrap();
+    let mdx_paths =
+        Prepyrus::get_mdx_paths(&config.target_path, Some(config.settings.ignore_paths))?;
 
     // Phase 1: Verify MDX files
-    let articles_file_data = Prepyrus::verify(mdx_paths, &all_entries).unwrap();
+    let articles_file_data = Prepyrus::verify(mdx_paths, &all_entries)?;
 
     // Phase 2: Process MDX files (requires mode to be set to "process")
-    if mode == "process" {
+    if config.mode == "process" {
         Prepyrus::process(articles_file_data);
     }
 
-    println!("===Prepyrus completed successfully!");
+    Ok(())
 }
