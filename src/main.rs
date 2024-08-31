@@ -11,8 +11,9 @@ fn main() {
     println!("===Prepyrus completed successfully!");
 }
 
+/// Run all the methods of prepyrus
 fn run(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let config = Prepyrus::verify_config(&args, None)?;
+    let config = Prepyrus::build_config(&args, None)?;
     let all_entries = Prepyrus::get_all_bib_entries(&config.bib_file).unwrap();
     let mdx_paths =
         Prepyrus::get_mdx_paths(&config.target_path, Some(config.settings.ignore_paths))?;

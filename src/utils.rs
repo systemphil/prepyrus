@@ -84,6 +84,7 @@ impl BiblatexUtils {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub bib_file: String,
     pub target_path: String,
@@ -129,38 +130,47 @@ impl Utils {
         Ok(settings)
     }
 
-    pub fn extract_paths(path: &str, exceptions: Option<Vec<String>>) -> io::Result<Vec<String>> {
-        let exceptions = exceptions.unwrap_or_else(|| Vec::new());
+    pub fn extract_paths(path: &str, ignore_paths: Option<Vec<String>>) -> io::Result<Vec<String>> {
+        let exceptions = ignore_paths.unwrap_or_else(|| Vec::new());
         let mdx_paths_raw = Self::extract_mdx_paths(path).unwrap();
         let mdx_paths = Self::filter_mdx_paths_for_exceptions(mdx_paths_raw, exceptions);
 
         Ok(mdx_paths)
     }
 
-    pub fn verify_config(
+    pub fn build_config(
         args: &Vec<String>,
         test_mode: Option<LoadOrCreateSettingsTestMode>,
     ) -> Result<Config, &'static str> {
-        if args.len() < 3 {
+        if args.len() < 4 {
             return Err("Arguments missing: <bibliography.bib> <target_dir_or_file> <mode>");
         }
-        if !args[0].ends_with(".bib") {
+        if !args[1].ends_with(".bib") {
             return Err("Invalid file format. Please provide a file with .bib extension.");
         }
-        let target_arg = &args[1];
+        let target_arg = &args[2];
         if !Path::new(target_arg).is_dir() && !target_arg.ends_with(".mdx") {
             return Err("Invalid target. Please provide a directory or a single MDX file.");
         }
-        if !args[2].eq("verify") && !args[2].eq("process") {
+        if !args[3].eq("verify") && !args[3].eq("process") {
             return Err("Invalid mode. Please provide either 'verify' or 'process'.");
         }
 
-        let settings = Self::load_or_create_settings("prepyrus_settings.json", test_mode).unwrap();
+        let settings: Settings;
+        if args.len() == 5 {
+            let ignore_parts_vector: Vec<String> =
+                args[4].split(',').map(|s| s.to_string()).collect();
+            settings = Settings {
+                ignore_paths: ignore_parts_vector,
+            };
+        } else {
+            settings = Self::load_or_create_settings("prepyrus_settings.json", test_mode).unwrap();
+        }
 
         let config = Config {
-            bib_file: args[0].clone(),
-            target_path: args[1].clone(),
-            mode: args[2].clone(),
+            bib_file: args[1].clone(),
+            target_path: args[2].clone(),
+            mode: args[3].clone(),
             settings,
         };
 
@@ -185,9 +195,6 @@ impl Utils {
             let path = entry.path();
 
             if path.is_dir() {
-                if path.file_name() == Some(std::ffi::OsStr::new("contributing")) {
-                    continue; // Skip the "contributing" folder
-                }
                 let sub_paths = Self::extract_mdx_paths(path.to_str().unwrap())?;
                 mdx_paths.extend(sub_paths);
             } else if path.is_file() && path.extension() == Some(std::ffi::OsStr::new("mdx")) {
@@ -207,12 +214,11 @@ impl Utils {
         mdx_paths: Vec<String>,
         exceptions: Vec<String>,
     ) -> Vec<String> {
-        let mut filtered_paths = Vec::new();
-        for path in mdx_paths {
-            if !exceptions.contains(&path) {
-                filtered_paths.push(path);
-            }
+        let mut filtered_paths = mdx_paths.clone();
+        if exceptions.is_empty() {
+            return filtered_paths;
         }
+        filtered_paths.retain(|path| !exceptions.iter().any(|exception| path.contains(exception)));
         filtered_paths
     }
 }
