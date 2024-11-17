@@ -1,9 +1,7 @@
 use biblatex::{Bibliography, Chunk, Date, DateValue, Entry, PermissiveType, Spanned};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, create_dir_all, File},
-    io::{self, Write},
-    path::Path,
+    fs::{self, create_dir_all, File}, io::{self, Write}, ops::Range, path::Path
 };
 
 pub struct BiblatexUtils;
@@ -35,6 +33,26 @@ impl BiblatexUtils {
                 DateValue::Between(start, _end) => Ok(start.year), // Or use end.year
             },
             _ => return Err(format!("Unable to retrieve year for: {}", reference)),
+        }
+    }
+
+    pub fn extract_volume(volume: &PermissiveType<i64>) -> i64 {
+        match volume {
+            PermissiveType::Typed(volume) => *volume,
+            _ => 0,
+        }
+    }
+
+    pub fn extract_pages(pages: &PermissiveType<Vec<Range<u32>>>) -> String {
+        match pages {
+            PermissiveType::Typed(pages) => {
+                let mut pages_str = String::new();
+                for page in pages {
+                    pages_str.push_str(&format!("{}–{}", page.start, page.end));
+                }
+                pages_str
+            }
+            _ => String::new(),
         }
     }
 
@@ -142,6 +160,13 @@ impl Utils {
         args: &Vec<String>,
         test_mode: Option<LoadOrCreateSettingsTestMode>,
     ) -> Result<Config, &'static str> {
+        println!("Number of arguments: {}", args.len());
+        println!("Arguments:");
+        for (i, arg) in args.iter().enumerate() {
+            println!("  args[{}]: {}", i, arg);
+        }
+
+        
         if args.len() < 4 {
             return Err("Arguments missing: <bibliography.bib> <target_dir_or_file> <mode>");
         }

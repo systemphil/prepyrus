@@ -8,7 +8,7 @@ fn main() {
         std::process::exit(1);
     });
 
-    println!("===Prepyrus completed successfully!");
+    println!("✴️ Prepyrus completed successfully!");
 }
 
 /// Run all the methods of prepyrus

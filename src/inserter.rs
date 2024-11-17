@@ -118,9 +118,13 @@ fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
                         author[0].name, author[0].given_name
                     ));
                 } else if author.len() == 2 {
+                    // In Chicago style, when listing multiple authors in a bibliography entry, 
+                    // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent 
+                    // authors' names are written in standard order (i.e., "First Last"). 
+                    // This rule helps differentiate the primary author from co-authors.
                     mdx_html.push_str(&format!(
-                        "{}, {} and {}, {}. ",
-                        author[0].name, author[0].given_name, author[1].name, author[1].given_name
+                        "{}, {} and {} {}. ",
+                        author[0].name, author[0].given_name, author[1].given_name, author[1].name
                     ));
                 } else {
                     mdx_html.push_str(&format!("{}, {}. ", author[0].name, author[0].given_name));
@@ -134,6 +138,61 @@ fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
                 }
 
                 mdx_html.push_str(&format!("{}: {}.", address, publisher));
+            }
+            EntryType::Article => {
+                let author = entry.author().unwrap();
+
+                let title_spanned: &[biblatex::Spanned<biblatex::Chunk>] = entry.title().unwrap();
+                let title = BiblatexUtils::extract_spanned_chunk(title_spanned);
+                let journal_spanned = entry.journal().unwrap();
+                let journal = BiblatexUtils::extract_spanned_chunk(&journal_spanned);
+
+                let volume_permissive = entry.volume().unwrap();
+                let volume = BiblatexUtils::extract_volume(&volume_permissive);
+
+                let number_spanned = entry.number().unwrap();
+                let number = BiblatexUtils::extract_spanned_chunk(&number_spanned);
+
+                let pages_permissive = entry.pages().unwrap();
+                let pages = BiblatexUtils::extract_pages(&pages_permissive);
+
+                let date = entry.date().unwrap();
+                let year = BiblatexUtils::extract_year(&date, entry.key.clone()).unwrap();
+                let translators = entry.translator().unwrap_or(Vec::new());
+
+                let doi = entry.doi().unwrap_or("".to_string());
+
+                // TODO refactor into a separate function
+                if author.len() > 2 {
+                    mdx_html.push_str(&format!(
+                        "{}, {} et al. ",
+                        author[0].name, author[0].given_name
+                    ));
+                } else if author.len() == 2 {
+                    // See comment above
+                    mdx_html.push_str(&format!(
+                        "{}, {} and {} {}. ",
+                        author[0].name, author[0].given_name, author[1].given_name, author[1].name
+                    ));
+                } else {
+                    mdx_html.push_str(&format!("{}, {}. ", author[0].name, author[0].given_name));
+                }
+                mdx_html.push_str(&format!("\"{}\". ", title));
+
+                let translators_mdx = generate_contributors(translators, "Translated".to_string());
+                if !translators_mdx.is_empty() {
+                    mdx_html.push_str(&translators_mdx);
+                }
+
+                mdx_html.push_str(&format!(
+                    "_{}_ {}, no. {} ({}): {}.",
+                    journal, volume, number, year, pages
+                ));
+                if !doi.is_empty() {
+                    mdx_html.push_str(&format!(" https://doi.org/{}.", doi));
+                }
+
+                
             }
             _ => println!("Entry type not supported: {:?}", entry.entry_type),
         }
