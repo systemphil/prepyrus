@@ -89,16 +89,16 @@ fn write_html_to_mdx_file(path: &str, content: &str) -> io::Result<()> {
 }
 
 fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
-    let mut mdx_html = String::new();
+    let mut bib_html = String::new();
 
     if entries.is_empty() {
-        return mdx_html;
+        return bib_html;
     }
 
-    mdx_html.push_str("\n## Bibliography\n\n<div className=\"text-sm\">\n");
+    bib_html.push_str("\n## Bibliography\n\n<div className=\"text-sm\">\n");
 
     for entry in entries {
-        mdx_html.push_str("- ");
+        bib_html.push_str("- ");
         match entry.entry_type {
             EntryType::Book => {
                 let author = entry.author().unwrap();
@@ -111,33 +111,22 @@ fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
                 let date = entry.date().unwrap();
                 let year = BiblatexUtils::extract_year(&date, entry.key.clone()).unwrap();
                 let translators = entry.translator().unwrap_or(Vec::new());
+                let doi = entry.doi().unwrap_or("".to_string());
 
-                if author.len() > 2 {
-                    mdx_html.push_str(&format!(
-                        "{}, {} et al. ",
-                        author[0].name, author[0].given_name
-                    ));
-                } else if author.len() == 2 {
-                    // In Chicago style, when listing multiple authors in a bibliography entry, 
-                    // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent 
-                    // authors' names are written in standard order (i.e., "First Last"). 
-                    // This rule helps differentiate the primary author from co-authors.
-                    mdx_html.push_str(&format!(
-                        "{}, {} and {} {}. ",
-                        author[0].name, author[0].given_name, author[1].given_name, author[1].name
-                    ));
-                } else {
-                    mdx_html.push_str(&format!("{}, {}. ", author[0].name, author[0].given_name));
-                }
-                mdx_html.push_str(&format!("{}. ", year));
-                mdx_html.push_str(&format!("_{}_. ", title));
+                add_authors_to_html(author, &mut bib_html);
+                bib_html.push_str(&format!("{}. ", year));
+                bib_html.push_str(&format!("_{}_. ", title));
 
                 let translators_mdx = generate_contributors(translators, "Translated".to_string());
                 if !translators_mdx.is_empty() {
-                    mdx_html.push_str(&translators_mdx);
+                    bib_html.push_str(&translators_mdx);
                 }
 
-                mdx_html.push_str(&format!("{}: {}.", address, publisher));
+                bib_html.push_str(&format!("{}: {}.", address, publisher));
+
+                if !doi.is_empty() {
+                    bib_html.push_str(&format!(" https://doi.org/{}.", doi));
+                }
             }
             EntryType::Article => {
                 let author = entry.author().unwrap();
@@ -162,50 +151,35 @@ fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
 
                 let doi = entry.doi().unwrap_or("".to_string());
 
-                // TODO refactor into a separate function
-                if author.len() > 2 {
-                    mdx_html.push_str(&format!(
-                        "{}, {} et al. ",
-                        author[0].name, author[0].given_name
-                    ));
-                } else if author.len() == 2 {
-                    // See comment above
-                    mdx_html.push_str(&format!(
-                        "{}, {} and {} {}. ",
-                        author[0].name, author[0].given_name, author[1].given_name, author[1].name
-                    ));
-                } else {
-                    mdx_html.push_str(&format!("{}, {}. ", author[0].name, author[0].given_name));
-                }
-                mdx_html.push_str(&format!("\"{}\". ", title));
+                add_authors_to_html(author, &mut bib_html);
+                bib_html.push_str(&format!("\"{}\". ", title));
+
+                bib_html.push_str(&format!(
+                    "_{}_ {}, no. {} ({}): {}. ",
+                    journal, volume, number, year, pages
+                ));
 
                 let translators_mdx = generate_contributors(translators, "Translated".to_string());
                 if !translators_mdx.is_empty() {
-                    mdx_html.push_str(&translators_mdx);
-                }
+                    bib_html.push_str(&translators_mdx);
+                } 
 
-                mdx_html.push_str(&format!(
-                    "_{}_ {}, no. {} ({}): {}.",
-                    journal, volume, number, year, pages
-                ));
                 if !doi.is_empty() {
-                    mdx_html.push_str(&format!(" https://doi.org/{}.", doi));
+                    bib_html.push_str(&format!(" https://doi.org/{}.", doi));
                 }
-
-                
             }
             _ => println!("Entry type not supported: {:?}", entry.entry_type),
         }
-        mdx_html.push_str("\n");
+        bib_html.push_str("\n");
     }
 
-    mdx_html.push_str("</div>\n");
+    bib_html.push_str("</div>\n");
 
-    mdx_html = mdx_html.replace("..", ".");
-    mdx_html = mdx_html.replace("...", ".");
-    mdx_html = mdx_html.replace("....", ".");
+    bib_html = bib_html.replace("..", ".");
+    bib_html = bib_html.replace("...", ".");
+    bib_html = bib_html.replace("....", ".");
 
-    mdx_html
+    bib_html
 }
 
 fn generate_contributors(
@@ -265,4 +239,24 @@ fn generate_notes_heading(markdown: &String) -> String {
         }
     }
     mdx_notes_heading
+}
+
+fn add_authors_to_html(author: Vec<biblatex::Person>, bib_html: &mut String) {
+    if author.len() > 2 {
+        bib_html.push_str(&format!(
+            "{}, {} et al. ",
+            author[0].name, author[0].given_name
+        ));
+    } else if author.len() == 2 {
+        // In Chicago style, when listing multiple authors in a bibliography entry, 
+        // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent 
+        // authors' names are written in standard order (i.e., "First Last"). 
+        // This rule helps differentiate the primary author from co-authors.
+        bib_html.push_str(&format!(
+            "{}, {} and {} {}. ",
+            author[0].name, author[0].given_name, author[1].given_name, author[1].name
+        ));
+    } else {
+        bib_html.push_str(&format!("{}, {}. ", author[0].name, author[0].given_name));
+    }
 }
