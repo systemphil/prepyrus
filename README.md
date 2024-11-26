@@ -36,7 +36,7 @@ fn main() {
         std::process::exit(1);
     });
 
-    println!("===Prepyrus completed successfully!");
+    println!("Prepyrus completed successfully!");
 }
 
 fn run(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
@@ -80,7 +80,7 @@ Finally, it also adds a notes heading at the end if footnotes are present in the
 
 The tool currently only supports citations in Chicago author-date style.
 Only book entries are currently supported (plans to support more types in the future).
-Only the following metadata fields are supported:
+Only the following metadata fields from the target `.mdx` files are supported:
 
 - author
 - editor
