@@ -1,18 +1,18 @@
 {
-    "version": "0.2",
-    "ignorePaths": [],
-    "dictionaryDefinitions": [],
-    "dictionaries": [],
-    "words": [
-        "Biblatex",
-        "datetime",
-        "eprintln",
-        "Prepyrus",
-        "println",
-        "serde",
-        "splitn",
-        "Typst"
-    ],
-    "ignoreWords": [],
-    "import": []
+  "version": "0.2",
+  "ignorePaths": ["*"],
+  "dictionaryDefinitions": [],
+  "dictionaries": [],
+  "words": [
+    "Biblatex",
+    "datetime",
+    "eprintln",
+    "Prepyrus",
+    "println",
+    "serde",
+    "splitn",
+    "Typst"
+  ],
+  "ignoreWords": [],
+  "import": []
 }

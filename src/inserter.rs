@@ -116,6 +116,7 @@ fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
         bib_html.push_str("- ");
         match entry.entry_type {
             EntryType::Book => {
+                // TODO refactor these blocks into functions
                 let author = entry.author().unwrap();
                 let title_spanned: &[biblatex::Spanned<biblatex::Chunk>] = entry.title().unwrap();
                 let title = BiblatexUtils::extract_spanned_chunk(title_spanned);

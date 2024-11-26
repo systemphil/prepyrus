@@ -149,6 +149,7 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //      Regex explanation
     //
     //      \(      Match an opening parenthesis
+    //     (see\s)? Optionally match the word "see" followed by a whitespace
     //      ([A-Z]  Match a capital letter
     //      [^()]*? Match any character except opening and closing parenthesis
     //      \d+     Match one or more digits
@@ -160,13 +161,22 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //
     // The regex will match citations in the format (Author_last_name 2021) or (Author_last_name 2021, 123)
     //
-    let citation_regex = Regex::new(r"\(([A-Z][^()]*?\d+(?:,[^)]*)?)\)").unwrap();
+    let citation_regex = Regex::new(r"\((see\s)?([A-Z][^()]*?\d+(?:,[^)]*)?)\)").unwrap();
     let mut citations = Vec::new();
 
     for line in markdown.lines() {
         for captures in citation_regex.captures_iter(line) {
-            let citation = captures.get(1).unwrap().as_str().trim();
-            citations.push(citation.to_string());
+            match captures.len() {
+                2 => {
+                    let citation = captures.get(1).unwrap().as_str().trim();
+                    citations.push(citation.to_string());
+                },
+                3 => {
+                    let citation = captures.get(2).unwrap().as_str().trim();
+                    citations.push(citation.to_string());
+                },
+                _ => {} // Ignore unexpected capture group lengths
+            }
         }
     }
     citations
@@ -280,9 +290,22 @@ mod tests_citation_extraction {
         assert_eq!(citations, vec!["Hegel 2021"]);
     }
     #[test]
+    fn single_citation_prefixed_see() {
+        let markdown = String::from("This is a citation (see Hegel 2021) in the text.");
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["Hegel 2021"]);
+    }
+    #[test]
     fn multiple_citations() {
         let markdown =
             String::from("This is a citation (Spinoza 2021) and another one (Kant 2020, 123).");
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
+    }
+    #[test]
+    fn multiple_citations_prefixed_see() {
+        let markdown =
+            String::from("This is a citation (see Spinoza 2021) and another one (see Kant 2020, 123).");
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
     }
@@ -376,6 +399,7 @@ mod tests_validate_citations {
         let citations_set = create_citations_set(citations);
         assert_eq!(citations_set, vec!["Hegel 2021", "Kant"]);
     }
+    // TODO what happened here? investigate
     // #[test]
     // fn test_match_citations_to_bibliography() {
     //     let bibliography = vec![
