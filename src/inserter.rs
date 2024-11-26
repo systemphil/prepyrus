@@ -95,9 +95,24 @@ fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
         return bib_html;
     }
 
+    let mut sorted_entries = entries.clone();
+    sorted_entries.sort_by(|a, b| {
+        let a_authors = a.author().unwrap_or_default();
+        let b_authors = b.author().unwrap_or_default();
+        
+        let a_last_name = a_authors.first()
+            .map(|p| p.name.clone().to_lowercase())
+            .unwrap_or_default();
+        let b_last_name = b_authors.first()
+            .map(|p| p.name.clone().to_lowercase())
+            .unwrap_or_default();
+        
+        a_last_name.cmp(&b_last_name)
+    });
+
     bib_html.push_str("\n## Bibliography\n\n<div className=\"text-sm\">\n");
 
-    for entry in entries {
+    for entry in sorted_entries {
         bib_html.push_str("- ");
         match entry.entry_type {
             EntryType::Book => {
