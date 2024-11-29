@@ -7,7 +7,7 @@ repository = "https://github.com/systemphil/prepyrus"
 readme = "README.md"
 categories = ["database", "parser-implementations", "text-processing"]
 keywords = ["bibtex", "biblatex", "mdx", "parser", "citation"]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 
 [dependencies]
