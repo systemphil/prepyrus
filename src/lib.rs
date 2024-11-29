@@ -95,19 +95,32 @@ Thanks to Typst's [biblatex](https://github.com/typst/biblatex) package for prov
 Apache-2.0
 */
 
-pub mod inserter;
+pub mod inserters;
 pub mod utils;
-pub mod validator;
+pub mod validators;
+pub mod transformers;
 
 use std::io::Error;
 
 pub use crate::utils::Config;
 use biblatex::Entry;
 use utils::{BiblatexUtils, BibliographyError, LoadOrCreateSettingsTestMode, Utils};
-use validator::ArticleFileData;
+use validators::ArticleFileData;
+
+/// Main API interface for the Prepyrus tool.
+/// It contains methods for building the configuration, retrieving bibliography entries,
+/// retrieving MDX file paths, verifying MDX files, and processing MDX files.
+/// There is an intended usage of these methods, but you are free to mix and match as you like.
 pub struct Prepyrus {}
 
 impl Prepyrus {
+    /// Build a configuration object from the command line arguments.
+    /// - The first argument is the program index.
+    /// - The second argument is the path to the bibliography file.
+    /// - The third argument is the target path (directory or file).
+    /// - The fourth argument is the mode ("verify" or "process").
+    /// - The fifth argument is the optional ignore paths (separate with commas if multiple).
+    /// - Optionally, a test mode can be passed to simulate the creation of a settings file.
     pub fn build_config(
         args: &Vec<String>,
         test_mode: Option<LoadOrCreateSettingsTestMode>,
@@ -115,10 +128,14 @@ impl Prepyrus {
         Utils::build_config(args, test_mode)
     }
 
+    /// Retrieve all bibliography entries from the bibliography file.
+    /// Returns a vector of `biblatex::Entry`.
     pub fn get_all_bib_entries(bib_file: &str) -> Result<Vec<biblatex::Entry>, BibliographyError> {
         Ok(BiblatexUtils::retrieve_bibliography_entries(bib_file)?)
     }
 
+    /// Retrieve all MDX file paths from the target directory.
+    /// Optionally, ignore paths can be passed to exclude certain paths.
     pub fn get_mdx_paths(
         target_path: &str,
         ignore_paths: Option<Vec<String>>,
@@ -126,14 +143,17 @@ impl Prepyrus {
         Ok(Utils::extract_paths(target_path, ignore_paths)?)
     }
 
+    /// Verify the MDX files and their citations and match
+    /// them against the bibliography entries. Will throw if any of these fail.
     pub fn verify(
         mdx_paths: Vec<String>,
         all_entries: &Vec<Entry>,
     ) -> Result<Vec<ArticleFileData>, Error> {
-        validator::verify_mdx_files(mdx_paths, &all_entries)
+        validators::verify_mdx_files(mdx_paths, &all_entries)
     }
 
+    /// Process the MDX files by injecting bibliography and other details into the MDX files.
     pub fn process(all_articles: Vec<ArticleFileData>) {
-        inserter::process_mdx_files(all_articles)
+        inserters::process_mdx_files(all_articles)
     }
 }

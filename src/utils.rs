@@ -14,6 +14,7 @@ pub enum BibliographyError {
 }
 
 impl BiblatexUtils {
+    /// Retrieve bibliography entries from a BibTeX file.
     pub fn retrieve_bibliography_entries(
         bibliography_path: &str,
     ) -> Result<Vec<Entry>, BibliographyError> {
@@ -24,7 +25,8 @@ impl BiblatexUtils {
         Ok(bibliography.into_vec())
     }
 
-    pub fn extract_year(date: &PermissiveType<Date>, reference: String) -> Result<i32, String> {
+    /// Extract the year from a date that is inside of a permissive type.
+    pub fn extract_year_from_date(date: &PermissiveType<Date>, reference: String) -> Result<i32, String> {
         match date {
             PermissiveType::Typed(date) => match date.value {
                 DateValue::At(datetime) => Ok(datetime.year),
@@ -36,6 +38,7 @@ impl BiblatexUtils {
         }
     }
 
+    /// Extract volume from a permissive type.
     pub fn extract_volume(volume: &PermissiveType<i64>) -> i64 {
         match volume {
             PermissiveType::Typed(volume) => *volume,
@@ -43,6 +46,7 @@ impl BiblatexUtils {
         }
     }
 
+    /// Extract pages from a permissive type.
     pub fn extract_pages(pages: &PermissiveType<Vec<Range<u32>>>) -> String {
         match pages {
             PermissiveType::Typed(pages) => {
@@ -87,6 +91,7 @@ impl BiblatexUtils {
             .collect()
     }
 
+    /// Extract the publisher from a `Spanned<Chunk>` vector.
     pub fn extract_publisher(publisher_data: &Vec<Vec<Spanned<Chunk>>>) -> String {
         publisher_data
             .iter()
@@ -121,6 +126,8 @@ pub enum LoadOrCreateSettingsTestMode {
 }
 
 impl Utils {
+    /// Load or create settings file. 
+    /// If the file does not exist, it will be created with default settings.
     fn load_or_create_settings(
         settings_path: &str,
         test_mode: Option<LoadOrCreateSettingsTestMode>,
@@ -148,6 +155,8 @@ impl Utils {
         Ok(settings)
     }
 
+    /// Extract paths of MDX files from a directory and its subdirectories.
+    /// Optionally, provide a list of paths to ignore.
     pub fn extract_paths(path: &str, ignore_paths: Option<Vec<String>>) -> io::Result<Vec<String>> {
         let exceptions = ignore_paths.unwrap_or_else(|| Vec::new());
         let mdx_paths_raw = Self::extract_mdx_paths(path).unwrap();
@@ -156,6 +165,7 @@ impl Utils {
         Ok(mdx_paths)
     }
 
+    /// Build configuration from arguments to be used internally.
     pub fn build_config(
         args: &Vec<String>,
         test_mode: Option<LoadOrCreateSettingsTestMode>,
@@ -235,6 +245,7 @@ impl Utils {
         Ok(mdx_paths)
     }
 
+    /// Filter MDX paths for exceptions.
     fn filter_mdx_paths_for_exceptions(
         mdx_paths: Vec<String>,
         exceptions: Vec<String>,

@@ -25,6 +25,11 @@ pub struct ArticleFileData {
     pub full_file_content: String,
 }
 
+/// Verifies the integrity of MDX files.
+/// The function reads the MDX files, extracts metadata and markdown content,
+/// verifies the citations format, and matches the citations to the bibliography.
+/// The function returns a list of ArticleFileData structs containing the metadata,
+/// markdown content, matched citations, and full file content.
 pub fn verify_mdx_files(
     mdx_paths: Vec<String>,
     all_entries: &Vec<Entry>,
@@ -82,13 +87,16 @@ pub fn verify_mdx_files(
         article_count += 1;
     }
     println!(
-        "===Integrity verification OK: {} files verified, including {} articles",
+        "✓ Integrity verification OK: {} files verified, including {} articles",
         mdx_paths.len(),
         article_count
     );
     Ok(all_articles)
 }
 
+/// Reads an MDX file and extracts metadata and markdown content.
+/// The function returns a tuple containing the metadata, markdown content, and full file content.
+/// The metadata is expected to be enclosed in `---` at the start of the file.
 fn read_mdx_file(path: &str) -> io::Result<(Metadata, String, String)> {
     let file = fs::File::open(path)?;
     let mut reader = BufReader::new(file);
@@ -120,6 +128,8 @@ fn read_mdx_file(path: &str) -> io::Result<(Metadata, String, String)> {
     Ok((metadata, markdown_content, full_file_content))
 }
 
+/// Checks if the parentheses in a markdown string are balanced. 
+/// No odd number of parentheses is allowed.
 fn check_parentheses_balance(markdown: &String) -> bool {
     let mut balance = 0;
 
@@ -182,6 +192,9 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     citations
 }
 
+/// Verifies the format of the citations extracted from the markdown.
+/// The citations are expected to be in the format (Author_last_name 2021) 
+/// or (Author_last_name 2021, 123)
 fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
     for citation in citations {
         let citation_split = citation.splitn(2, ',').collect::<Vec<&str>>();
@@ -203,6 +216,7 @@ fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
     Ok(())
 }
 
+/// Creates a set of unique citations from a list of citations.
 fn create_citations_set(citations: Vec<String>) -> Vec<String> {
     let mut citations_set = Vec::new();
     for citation in citations {
@@ -234,7 +248,7 @@ fn match_citations_to_bibliography(
             let author_last_name = author[0].name.clone();
 
             let date: biblatex::PermissiveType<biblatex::Date> = entry.date().unwrap();
-            let year = BiblatexUtils::extract_year(&date, citation.clone()).unwrap();
+            let year = BiblatexUtils::extract_year_from_date(&date, citation.clone()).unwrap();
 
             let author_year = format!("{} {:?}", author_last_name, year);
 
