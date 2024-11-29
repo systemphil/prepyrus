@@ -4,7 +4,10 @@ use std::{
     fs::{self, create_dir_all, File}, io::{self, Write}, ops::Range, path::Path
 };
 
+/// Utility functions for working with BibTeX files.
 pub struct BiblatexUtils;
+
+/// Utility functions for working with files and directories.
 pub struct Utils;
 
 #[derive(Debug)]
