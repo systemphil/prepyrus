@@ -18,10 +18,15 @@ pub struct Metadata {
 
 #[derive(Debug)]
 pub struct ArticleFileData {
+    /// Path to the file whose contents were extracted.
     pub path: String,
+    /// Metadata enclosed at the top of the file.
     pub metadata: Metadata,
+    /// Contents of the file.
     pub markdown_content: String,
+    /// A set of citations that exist in the source `.bib` file.
     pub matched_citations: Vec<Entry>,
+    /// Original contents of the file, includes metadata.
     pub full_file_content: String,
 }
 
@@ -128,7 +133,7 @@ fn read_mdx_file(path: &str) -> io::Result<(Metadata, String, String)> {
     Ok((metadata, markdown_content, full_file_content))
 }
 
-/// Checks if the parentheses in a markdown string are balanced. 
+/// Checks if the parentheses in a markdown string are balanced.
 /// No odd number of parentheses is allowed.
 fn check_parentheses_balance(markdown: &String) -> bool {
     let mut balance = 0;
@@ -180,11 +185,11 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
                 2 => {
                     let citation = captures.get(1).unwrap().as_str().trim();
                     citations.push(citation.to_string());
-                },
+                }
                 3 => {
                     let citation = captures.get(2).unwrap().as_str().trim();
                     citations.push(citation.to_string());
-                },
+                }
                 _ => {} // Ignore unexpected capture group lengths
             }
         }
@@ -193,7 +198,7 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
 }
 
 /// Verifies the format of the citations extracted from the markdown.
-/// The citations are expected to be in the format (Author_last_name 2021) 
+/// The citations are expected to be in the format (Author_last_name 2021)
 /// or (Author_last_name 2021, 123)
 fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
     for citation in citations {
@@ -318,8 +323,9 @@ mod tests_citation_extraction {
     }
     #[test]
     fn multiple_citations_prefixed_see() {
-        let markdown =
-            String::from("This is a citation (see Spinoza 2021) and another one (see Kant 2020, 123).");
+        let markdown = String::from(
+            "This is a citation (see Spinoza 2021) and another one (see Kant 2020, 123).",
+        );
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
     }
