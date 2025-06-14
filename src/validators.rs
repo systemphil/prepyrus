@@ -8,6 +8,8 @@ use std::io::{self, BufReader, Error, Read};
 #[derive(Debug, Deserialize)]
 pub struct Metadata {
     pub title: String,
+    #[serde(rename = "indexTitle")]
+    pub index_title: String,
     pub description: String,
     #[serde(rename = "isArticle")]
     pub is_article: bool,
