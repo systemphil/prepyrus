@@ -12,6 +12,7 @@ fn run_verify_with_directory() {
         mode: Mode::Verify,
         ignore_paths: None,
         generate_index_to_file: None,
+        index_link_prefix_rewrite: None,
     };
 
     let Config {
@@ -20,6 +21,7 @@ fn run_verify_with_directory() {
         mode,
         settings,
         generate_index_file,
+        index_link_prefix_rewrite: link_prefix_rewrite,
     } = Prepyrus::build_config(cli, Some(LoadOrCreateSettingsTestMode::Test)).unwrap_or_else(|e| {
         eprintln!("Error: {}", e);
         std::process::exit(1);
@@ -32,6 +34,7 @@ fn run_verify_with_directory() {
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Verify);
     assert!(generate_index_file == None);
+    assert!(link_prefix_rewrite == None);
     assert!(articles_file_data.len() > 1);
     assert!(!articles_file_data.is_empty());
 }
@@ -44,6 +47,7 @@ fn run_verify_with_directory_with_ignored_paths_from_settings() {
         mode: Mode::Verify,
         ignore_paths: None,
         generate_index_to_file: None,
+        index_link_prefix_rewrite: None,
     };
 
     let Config {
@@ -52,6 +56,7 @@ fn run_verify_with_directory_with_ignored_paths_from_settings() {
         mode,
         settings,
         generate_index_file,
+        index_link_prefix_rewrite: link_prefix_rewrite,
     } = Prepyrus::build_config(cli, Some(LoadOrCreateSettingsTestMode::Test)).unwrap_or_else(|e| {
         eprintln!("Error: {}", e);
         std::process::exit(1);
@@ -64,6 +69,7 @@ fn run_verify_with_directory_with_ignored_paths_from_settings() {
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Verify);
     assert!(generate_index_file == None);
+    assert!(link_prefix_rewrite == None);
     assert!(articles_file_data.len() > 1);
     assert!(!articles_file_data.is_empty());
 }
@@ -77,6 +83,7 @@ fn run_verify_with_directory_with_ignored_paths_from_cli_args() {
             mode: Mode::Verify,
             ignore_paths: Some(ignored_paths.clone()),
             generate_index_to_file: None,
+            index_link_prefix_rewrite: None,
         };
 
         let Config {
@@ -85,6 +92,7 @@ fn run_verify_with_directory_with_ignored_paths_from_cli_args() {
             mode,
             settings,
             generate_index_file,
+            index_link_prefix_rewrite: link_prefix_rewrite,
         } = Prepyrus::build_config(cli, None).unwrap_or_else(|e| {
             eprintln!("Error: {}", e);
             std::process::exit(1);
@@ -95,6 +103,7 @@ fn run_verify_with_directory_with_ignored_paths_from_cli_args() {
         let articles_file_data = Prepyrus::verify(mdx_paths, &all_entries).unwrap();
         assert!(mode == Mode::Verify);
         assert!(generate_index_file == None);
+        assert!(link_prefix_rewrite == None);
         for ignored_path in ignored_paths {
             assert!(
                 articles_file_data
@@ -124,6 +133,7 @@ fn run_verify_with_single_file() {
         mode: Mode::Verify,
         ignore_paths: None,
         generate_index_to_file: None,
+        index_link_prefix_rewrite: None,
     };
 
     let Config {
@@ -132,6 +142,7 @@ fn run_verify_with_single_file() {
         mode,
         settings,
         generate_index_file,
+        index_link_prefix_rewrite: link_prefix_rewrite,
     } = Prepyrus::build_config(cli, Some(LoadOrCreateSettingsTestMode::Test)).unwrap_or_else(|e| {
         eprintln!("Error: {}", e);
         std::process::exit(1);
@@ -144,6 +155,7 @@ fn run_verify_with_single_file() {
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Verify);
     assert!(generate_index_file == None);
+    assert!(link_prefix_rewrite == None);
     assert!(articles_file_data.len() == 1);
     assert!(!articles_file_data.is_empty());
 }
@@ -156,7 +168,10 @@ fn run_process_with_dir() {
         mode: Mode::Process,
         ignore_paths: Some(vec!["tests/mocks/data/gen_index.mdx".into()]),
         generate_index_to_file: Some("tests/mocks/data/gen_index.mdx".to_string()),
+        index_link_prefix_rewrite: Some(("tests/mocks/data".to_string(), "articles".to_string())),
     };
+
+    let link_prefix_rewrite_arg = cli.index_link_prefix_rewrite.clone();
 
     let Config {
         bib_file,
@@ -164,6 +179,7 @@ fn run_process_with_dir() {
         mode,
         settings,
         generate_index_file,
+        index_link_prefix_rewrite: link_prefix_rewrite,
     } = Prepyrus::build_config(cli, Some(LoadOrCreateSettingsTestMode::Test)).unwrap_or_else(|e| {
         eprintln!("Error: {}", e);
         std::process::exit(1);
@@ -175,6 +191,7 @@ fn run_process_with_dir() {
 
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Process);
+    assert!(link_prefix_rewrite == Some(("tests/mocks/data".to_string(), "articles".to_string())));
     assert!(generate_index_file.is_some());
     assert!(articles_file_data.len() == 4);
     assert!(!articles_file_data.is_empty());
@@ -184,6 +201,7 @@ fn run_process_with_dir() {
         generate_index_file
             .clone()
             .expect("Expected generate_index_file"),
+        link_prefix_rewrite_arg.as_ref(),
     );
 
     Prepyrus::process(articles_file_data);

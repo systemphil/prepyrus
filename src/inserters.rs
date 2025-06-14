@@ -49,7 +49,11 @@ pub fn process_mdx_files(all_articles: Vec<ArticleFileData>) {
     );
 }
 
-pub fn generate_index_to_file(all_articles: Vec<ArticleFileData>, index_file_path: String) {
+pub fn generate_index_to_file(
+    all_articles: Vec<ArticleFileData>,
+    index_file_path: String,
+    rewrite: Option<&(String, String)>,
+) {
     let all_index_data_sorted: Vec<ArticleIndexData> = all_articles
         .into_iter()
         .map(get_index_data)
@@ -79,7 +83,7 @@ pub fn generate_index_to_file(all_articles: Vec<ArticleFileData>, index_file_pat
             }
         }
 
-        mdx_html.push_str(generate_index_entry(index_data.clone()).as_str());
+        mdx_html.push_str(generate_index_entry(index_data.clone(), rewrite).as_str());
     }
 
     let article_count = all_index_data_sorted.len();
@@ -230,16 +234,17 @@ fn get_index_data(article: ArticleFileData) -> ArticleIndexData {
     }
 }
 
-fn generate_index_entry(index_data: ArticleIndexData) -> String {
-    let mut mdx_payload = String::new();
+fn generate_index_entry(
+    index_data: ArticleIndexData,
+    rewrite: Option<&(String, String)>,
+) -> String {
+    let mut link = index_data.path.clone().replace(".mdx", "");
 
-    mdx_payload.push_str("\n[");
-    mdx_payload.push_str(&index_data.index_title.clone().to_string());
-    mdx_payload.push_str("]");
+    if let Some((from, to)) = rewrite {
+        if link.starts_with(from) {
+            link = link.replacen(from, to, 1);
+        }
+    }
 
-    mdx_payload.push_str("(");
-    mdx_payload.push_str(&index_data.path.clone().to_string().replace(".mdx", ""));
-    mdx_payload.push_str(")\n");
-
-    mdx_payload
+    format!("\n[{}]({})\n", index_data.index_title, link)
 }

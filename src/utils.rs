@@ -125,6 +125,7 @@ pub struct Config {
     pub mode: Mode,
     pub settings: Settings,
     pub generate_index_file: Option<String>,
+    pub index_link_prefix_rewrite: Option<(String, String)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -213,6 +214,7 @@ impl Utils {
             mode: cli.mode,
             settings,
             generate_index_file: cli.generate_index_to_file,
+            index_link_prefix_rewrite: cli.index_link_prefix_rewrite,
         })
     }
 
