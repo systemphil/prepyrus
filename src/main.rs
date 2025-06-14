@@ -22,6 +22,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // Phase 2: Process MDX files (requires mode to be set to "process")
     if config.mode == Mode::Process {
+        if let Some(index_file_path) = &config.generate_index_file {
+            Prepyrus::gen_index_to_file(articles_file_data.clone(), index_file_path.clone());
+        }
+
         Prepyrus::process(articles_file_data);
     }
 

@@ -168,5 +168,7 @@ impl Prepyrus {
         inserters::process_mdx_files(all_articles)
     }
 
-    pub fn make_index_file(all_articles: Vec<ArticleFileData>, index_file_path: Cli) {}
+    pub fn gen_index_to_file(all_articles: Vec<ArticleFileData>, index_file_path: String) {
+        inserters::generate_index_to_file(all_articles, index_file_path)
+    }
 }

@@ -149,13 +149,13 @@ fn run_verify_with_single_file() {
 }
 
 #[test]
-fn run_process_with_single_file() {
+fn run_process_with_dir() {
     let cli = Cli {
         bib_file: "tests/mocks/test.bib".to_string(),
-        target_path: "tests/mocks/data/development_to_process.mdx".to_string(),
+        target_path: "tests/mocks/data".to_string(),
         mode: Mode::Process,
-        ignore_paths: None,
-        generate_index_to_file: None,
+        ignore_paths: Some(vec!["tests/mocks/data/gen_index.mdx".into()]),
+        generate_index_to_file: Some("tests/mocks/data/gen_index.mdx".to_string()),
     };
 
     let Config {
@@ -175,9 +175,16 @@ fn run_process_with_single_file() {
 
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Process);
-    assert!(generate_index_file == None);
-    assert!(articles_file_data.len() == 1);
+    assert!(generate_index_file.is_some());
+    assert!(articles_file_data.len() == 4);
     assert!(!articles_file_data.is_empty());
+
+    Prepyrus::gen_index_to_file(
+        articles_file_data.clone(),
+        generate_index_file
+            .clone()
+            .expect("Expected generate_index_file"),
+    );
 
     Prepyrus::process(articles_file_data);
 }

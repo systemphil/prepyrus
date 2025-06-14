@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::fs;
 use std::io::{self, BufReader, Error, Read};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Metadata {
     pub title: String,
     #[serde(rename = "indexTitle")]
@@ -18,7 +18,7 @@ pub struct Metadata {
     pub contributors: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ArticleFileData {
     /// Path to the file whose contents were extracted.
     pub path: String,

@@ -1,6 +1,7 @@
 use biblatex::Entry;
+use itertools::Itertools;
 use regex::Regex;
-use std::fs;
+use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use validators::{ArticleFileData, Metadata};
 
@@ -12,6 +13,15 @@ struct InserterOutcome {
     total_authors_inserted: i32,
     total_notes_headings_inserted: i32,
     total_empty_payloads: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArticleIndexData {
+    /// Path to the file whose contents were extracted.
+    pub path: String,
+
+    /// Title for the index entry
+    pub index_title: String,
 }
 
 pub fn process_mdx_files(all_articles: Vec<ArticleFileData>) {
@@ -36,6 +46,36 @@ pub fn process_mdx_files(all_articles: Vec<ArticleFileData>) {
         inserter_outcome.total_notes_headings_inserted,
         inserter_outcome.total_empty_payloads
     );
+}
+
+pub fn generate_index_to_file(all_articles: Vec<ArticleFileData>, index_file_path: String) {
+    let all_index_data_sorted: Vec<ArticleIndexData> = all_articles
+        .into_iter()
+        .map(get_index_data)
+        .sorted_by(|a, b| {
+            a.index_title
+                .to_lowercase()
+                .cmp(&b.index_title.to_lowercase())
+        })
+        .collect();
+
+    let mut mdx_paload = String::new();
+
+    for index_data in all_index_data_sorted {
+        mdx_paload.push_str("\n");
+        mdx_paload.push_str(generate_index_entry(index_data).as_str());
+        mdx_paload.push_str("\n")
+    }
+
+    match append_to_file(&index_file_path, &mdx_paload) {
+        Ok(_) => {
+            println!("HTML Index inserted for {}", index_file_path);
+        }
+        Err(err) => {
+            eprintln!("Error writing HTML to MDX file: {}", err);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn process_mdx_file(article_file_data: ArticleFileData, inserter_outcome: &mut InserterOutcome) {
@@ -68,10 +108,7 @@ fn process_mdx_file(article_file_data: ArticleFileData, inserter_outcome: &mut I
     match write_html_to_mdx_file(&article_file_data.path, &updated_markdown_content) {
         Ok(_) => {
             inserter_outcome.total_articles_processed += 1;
-            println!(
-                "---Success! HTML bibliography inserted for {}",
-                article_file_data.path
-            );
+            println!("HTML bibliography inserted for {}", article_file_data.path);
         }
         Err(err) => {
             eprintln!("Error writing HTML to MDX file: {}", err);
@@ -84,6 +121,13 @@ fn write_html_to_mdx_file(path: &str, content: &str) -> io::Result<()> {
     let file = fs::File::create(path)?;
     let mut writer = io::BufWriter::new(file);
     writer.write_all(content.as_bytes())?;
+    Ok(())
+}
+
+fn append_to_file(path: &str, content: &str) -> std::io::Result<()> {
+    let mut file = OpenOptions::new().append(true).create(true).open(path)?;
+
+    writeln!(file, "{}", content)?;
     Ok(())
 }
 
@@ -147,4 +191,25 @@ fn generate_notes_heading(markdown: &String) -> String {
         }
     }
     mdx_notes_heading
+}
+
+fn get_index_data(article: ArticleFileData) -> ArticleIndexData {
+    ArticleIndexData {
+        path: article.path,
+        index_title: article.metadata.index_title,
+    }
+}
+
+fn generate_index_entry(index_data: ArticleIndexData) -> String {
+    let mut mdx_payload = String::new();
+
+    mdx_payload.push_str("\n[");
+    mdx_payload.push_str(&index_data.index_title.clone().to_string());
+    mdx_payload.push_str("]");
+
+    mdx_payload.push_str("(");
+    mdx_payload.push_str(&index_data.path.clone().to_string().replace(".mdx", ""));
+    mdx_payload.push_str(")\n");
+
+    mdx_payload
 }
