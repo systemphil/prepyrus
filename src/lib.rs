@@ -38,6 +38,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         mode: Mode::Verify,
         ignore_paths: Some(vec!["tests/mocks/data/development.mdx".into()]),
         generate_index_to_file: None,
+        index_link_prefix_rewrite: None,
     };
 
     let config = Prepyrus::build_config(cli, None)?;
