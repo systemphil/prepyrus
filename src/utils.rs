@@ -1,8 +1,13 @@
 use biblatex::{Bibliography, Chunk, Date, DateValue, Entry, PermissiveType, Spanned};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::{self, create_dir_all, File}, io::{self, Write}, ops::Range, path::Path
+    fs::{self, create_dir_all, File},
+    io::{self, Write},
+    ops::Range,
+    path::Path,
 };
+
+use crate::cli::{Cli, Mode};
 
 /// Utility functions for working with BibTeX files.
 pub struct BiblatexUtils;
@@ -29,7 +34,10 @@ impl BiblatexUtils {
     }
 
     /// Extract the year from a date that is inside of a permissive type.
-    pub fn extract_year_from_date(date: &PermissiveType<Date>, reference: String) -> Result<i32, String> {
+    pub fn extract_year_from_date(
+        date: &PermissiveType<Date>,
+        reference: String,
+    ) -> Result<i32, String> {
         match date {
             PermissiveType::Typed(date) => match date.value {
                 DateValue::At(datetime) => Ok(datetime.year),
@@ -114,8 +122,9 @@ impl BiblatexUtils {
 pub struct Config {
     pub bib_file: String,
     pub target_path: String,
-    pub mode: String,
+    pub mode: Mode,
     pub settings: Settings,
+    pub generate_index_file: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -129,7 +138,7 @@ pub enum LoadOrCreateSettingsTestMode {
 }
 
 impl Utils {
-    /// Load or create settings file. 
+    /// Load or create settings file.
     /// If the file does not exist, it will be created with default settings.
     fn load_or_create_settings(
         settings_path: &str,
@@ -170,49 +179,41 @@ impl Utils {
 
     /// Build configuration from arguments to be used internally.
     pub fn build_config(
-        args: &Vec<String>,
+        cli: Cli,
         test_mode: Option<LoadOrCreateSettingsTestMode>,
     ) -> Result<Config, &'static str> {
-        println!("Number of arguments: {}", args.len());
-        println!("Arguments:");
-        for (i, arg) in args.iter().enumerate() {
-            println!("  args[{}]: {}", i, arg);
-        }
-
-        
-        if args.len() < 4 {
-            return Err("Arguments missing: <bibliography.bib> <target_dir_or_file> <mode>");
-        }
-        if !args[1].ends_with(".bib") {
+        // Validation (optional; `clap` can also do some of this at parse time)
+        if !cli.bib_file.ends_with(".bib") {
             return Err("Invalid file format. Please provide a file with .bib extension.");
         }
-        let target_arg = &args[2];
-        if !Path::new(target_arg).is_dir() && !target_arg.ends_with(".mdx") {
+
+        if !Path::new(&cli.target_path).is_dir() && !cli.target_path.ends_with(".mdx") {
             return Err("Invalid target. Please provide a directory or a single MDX file.");
         }
-        if !args[3].eq("verify") && !args[3].eq("process") {
+
+        if cli.mode != Mode::Verify && cli.mode != Mode::Process {
             return Err("Invalid mode. Please provide either 'verify' or 'process'.");
         }
 
-        let settings: Settings;
-        if args.len() == 5 {
-            let ignore_parts_vector: Vec<String> =
-                args[4].split(',').map(|s| s.to_string()).collect();
-            settings = Settings {
-                ignore_paths: ignore_parts_vector,
-            };
-        } else {
-            settings = Self::load_or_create_settings("prepyrus_settings.json", test_mode).unwrap();
+        if cli.generate_index_file.is_some() && cli.mode != Mode::Process {
+            return Err("--generate-index-file can only be used when mode is 'process'");
         }
 
-        let config = Config {
-            bib_file: args[1].clone(),
-            target_path: args[2].clone(),
-            mode: args[3].clone(),
-            settings,
+        let settings = if let Some(paths) = cli.ignore_paths {
+            Settings {
+                ignore_paths: paths,
+            }
+        } else {
+            Self::load_or_create_settings("prepyrus_settings.json", test_mode).unwrap()
         };
 
-        Ok(config)
+        Ok(Config {
+            bib_file: cli.bib_file,
+            target_path: cli.target_path,
+            mode: cli.mode,
+            settings,
+            generate_index_file: cli.generate_index_file,
+        })
     }
 
     /// Excavates all MDX files in a directory and its subdirectories

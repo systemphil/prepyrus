@@ -16,27 +16,31 @@ prepyrus = "0.2"
 Main API interface is the `Prepyrus` impl. Example usage:
 
 ```rust
-use prepyrus::Prepyrus;
+use prepyrus::{
+    cli::{Cli, Mode},
+    Prepyrus
+};
 
 fn main() {
-    let args = vec![
-        "_program_index".to_string(),
-        "tests/mocks/test.bib".to_string(), // bibliography file
-        "tests/mocks/data".to_string(), // target directory or .mdx file
-        "verify".to_string(), // mode
-        "tests/mocks/data/development.mdx".to_string(), // optional ignore paths, separate with commas if multiple
-    ];
-
-    let _ = run(args).unwrap_or_else(|e| {
+    let _ = run().unwrap_or_else(|e| {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     });
 
-    println!("===Prepyrus completed successfully!");
+    println!("Prepyrus completed successfully!");
 }
 
-fn run(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    let config = Prepyrus::build_config(&args, None)?;
+fn run() -> Result<(), Box<dyn std::error::Error>> {
+    // Example Command Line Inputs
+    let cli = Cli {
+        bib_file: "tests/mocks/test.bib".to_string(),
+        target_path: "tests/mocks/data".to_string(),
+        mode: Mode::Verify,
+        ignore_paths: Some(vec!["tests/mocks/data/development.mdx".into()]),
+        generate_index_file: None,
+    };
+
+    let config = Prepyrus::build_config(cli, None)?;
     let all_entries = Prepyrus::get_all_bib_entries(&config.bib_file).unwrap();
     let mdx_paths =
         Prepyrus::get_mdx_paths(&config.target_path, Some(config.settings.ignore_paths))?;
@@ -45,7 +49,7 @@ fn run(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let articles_file_data = Prepyrus::verify(mdx_paths, &all_entries)?;
 
     // Phase 2: Process MDX files (requires mode to be set to "process")
-    if config.mode == "process" {
+    if config.mode == Mode::Process {
         Prepyrus::process(articles_file_data);
     }
 
@@ -95,15 +99,18 @@ Thanks to Typst's [biblatex](https://github.com/typst/biblatex) package for prov
 Apache-2.0
 */
 
+pub mod cli;
 pub mod inserters;
+pub mod transformers;
 pub mod utils;
 pub mod validators;
-pub mod transformers;
 
 use std::io::Error;
 
+use crate::cli::Cli;
 pub use crate::utils::Config;
 use biblatex::Entry;
+use clap::Parser;
 use utils::{BiblatexUtils, BibliographyError, LoadOrCreateSettingsTestMode, Utils};
 use validators::ArticleFileData;
 
@@ -114,6 +121,10 @@ use validators::ArticleFileData;
 pub struct Prepyrus {}
 
 impl Prepyrus {
+    pub fn parse_cli() -> Cli {
+        Cli::parse()
+    }
+
     /// Build a configuration object from the command line arguments.
     /// - The first argument is the program index.
     /// - The second argument is the path to the bibliography file.
@@ -122,10 +133,10 @@ impl Prepyrus {
     /// - The fifth argument is the optional ignore paths (separate with commas if multiple).
     /// - Optionally, a test mode can be passed to simulate the creation of a settings file.
     pub fn build_config(
-        args: &Vec<String>,
+        cli: Cli,
         test_mode: Option<LoadOrCreateSettingsTestMode>,
     ) -> Result<Config, &'static str> {
-        Utils::build_config(args, test_mode)
+        Utils::build_config(cli, test_mode)
     }
 
     /// Retrieve all bibliography entries from the bibliography file.
