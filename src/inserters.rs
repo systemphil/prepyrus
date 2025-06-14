@@ -59,15 +59,27 @@ pub fn generate_index_to_file(all_articles: Vec<ArticleFileData>, index_file_pat
         })
         .collect();
 
-    let mut mdx_paload = String::new();
+    let mut mdx_payload = String::new();
+    let mut current_letter: Option<char> = None;
 
     for index_data in all_index_data_sorted {
-        mdx_paload.push_str("\n");
-        mdx_paload.push_str(generate_index_entry(index_data).as_str());
-        mdx_paload.push_str("\n")
+        let first_letter = index_data
+            .index_title
+            .chars()
+            .next()
+            .map(|c| c.to_ascii_uppercase());
+
+        if first_letter != current_letter {
+            if let Some(letter) = first_letter {
+                mdx_payload.push_str(&format!("\n## {}\n", letter));
+                current_letter = Some(letter);
+            }
+        }
+
+        mdx_payload.push_str(generate_index_entry(index_data).as_str());
     }
 
-    match append_to_file(&index_file_path, &mdx_paload) {
+    match append_to_file(&index_file_path, &mdx_payload) {
         Ok(_) => {
             println!("HTML Index inserted for {}", index_file_path);
         }
