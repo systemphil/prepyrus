@@ -18,6 +18,19 @@ pub struct Metadata {
     pub contributors: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct MetadataUnverified {
+    pub title: String,
+    #[serde(rename = "indexTitle")]
+    pub index_title: Option<String>,
+    pub description: String,
+    #[serde(rename = "isArticle")]
+    pub is_article: bool,
+    pub authors: Option<String>,
+    pub editors: Option<String>,
+    pub contributors: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct ArticleFileData {
     /// Path to the file whose contents were extracted.
@@ -30,6 +43,49 @@ pub struct ArticleFileData {
     pub matched_citations: Vec<Entry>,
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArticleFileDataUnverified {
+    /// Path to the file whose contents were extracted.
+    pub path: String,
+    /// Metadata (unverified) enclosed at the top of the file.
+    pub metadata: MetadataUnverified,
+    /// Contents of the file.
+    pub markdown_content: String,
+    /// A set of citations that exist in the source `.bib` file.
+    pub matched_citations: Vec<Entry>,
+    /// Original contents of the file, includes metadata.
+    pub full_file_content: String,
+}
+
+impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
+    type Error = Box<dyn std::error::Error>;
+
+    fn try_from(article: ArticleFileDataUnverified) -> Result<Self, Self::Error> {
+        let title = article.metadata.index_title.clone().ok_or_else(|| {
+            format!(
+                "Missing `index_title` for article at path: {}",
+                article.path
+            )
+        })?;
+
+        Ok(ArticleFileData {
+            path: article.path,
+            metadata: Metadata {
+                title: article.metadata.title,
+                index_title: title,
+                description: article.metadata.description,
+                is_article: article.metadata.is_article,
+                authors: article.metadata.authors,
+                editors: article.metadata.editors,
+                contributors: article.metadata.contributors,
+            },
+            markdown_content: article.markdown_content,
+            matched_citations: article.matched_citations,
+            full_file_content: article.full_file_content,
+        })
+    }
 }
 
 /// Verifies the integrity of MDX files.
@@ -84,13 +140,18 @@ pub fn verify_mdx_files(
                 std::process::exit(1);
             }
         };
-        all_articles.push(ArticleFileData {
+        let article = ArticleFileDataUnverified {
             path: mdx_path.clone(),
             metadata,
             markdown_content,
             matched_citations,
             full_file_content,
-        });
+        };
+
+        let verified = ArticleFileData::try_from(article)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e.to_string()))?;
+        all_articles.push(verified);
+
         article_count += 1;
     }
     println!(
@@ -104,7 +165,7 @@ pub fn verify_mdx_files(
 /// Reads an MDX file and extracts metadata and markdown content.
 /// The function returns a tuple containing the metadata, markdown content, and full file content.
 /// The metadata is expected to be enclosed in `---` at the start of the file.
-fn read_mdx_file(path: &str) -> io::Result<(Metadata, String, String)> {
+fn read_mdx_file(path: &str) -> io::Result<(MetadataUnverified, String, String)> {
     let file = fs::File::open(path)?;
     let mut reader = BufReader::new(file);
     let mut content = String::new();
@@ -120,7 +181,7 @@ fn read_mdx_file(path: &str) -> io::Result<(Metadata, String, String)> {
     }
 
     let metadata_str = parts[1];
-    let metadata: Metadata = match serde_yaml::from_str(metadata_str) {
+    let metadata: MetadataUnverified = match serde_yaml::from_str(metadata_str) {
         Ok(data) => data,
         Err(err) => {
             return Err(io::Error::new(
