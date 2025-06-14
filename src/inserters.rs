@@ -1,6 +1,7 @@
 use biblatex::Entry;
 use itertools::Itertools;
 use regex::Regex;
+use std::collections::BTreeSet;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use validators::{ArticleFileData, Metadata};
@@ -59,10 +60,11 @@ pub fn generate_index_to_file(all_articles: Vec<ArticleFileData>, index_file_pat
         })
         .collect();
 
-    let mut mdx_payload = String::new();
+    let mut mdx_html = String::new();
     let mut current_letter: Option<char> = None;
+    let mut section_letters = BTreeSet::new();
 
-    for index_data in all_index_data_sorted {
+    for index_data in &all_index_data_sorted {
         let first_letter = index_data
             .index_title
             .chars()
@@ -71,15 +73,31 @@ pub fn generate_index_to_file(all_articles: Vec<ArticleFileData>, index_file_pat
 
         if first_letter != current_letter {
             if let Some(letter) = first_letter {
-                mdx_payload.push_str(&format!("\n## {}\n", letter));
+                mdx_html.push_str(&format!("\n## {}\n", letter));
+                section_letters.insert(letter);
                 current_letter = Some(letter);
             }
         }
 
-        mdx_payload.push_str(generate_index_entry(index_data).as_str());
+        mdx_html.push_str(generate_index_entry(index_data.clone()).as_str());
     }
 
-    match append_to_file(&index_file_path, &mdx_payload) {
+    let article_count = all_index_data_sorted.len();
+
+    let jump_links = section_letters
+        .iter()
+        .map(|letter| format!("[{}](#{})", letter, letter.to_ascii_lowercase()))
+        .collect::<Vec<_>>()
+        .join(" · ");
+
+    let intro = format!(
+    "_This index contains **{} articles**, organized alphabetically by title. Use the links below to jump to a section:_\n\n{}",
+    article_count, jump_links
+);
+
+    let final_payload = format!("{}\n\n{}", intro, mdx_html);
+
+    match append_to_file(&index_file_path, &final_payload) {
         Ok(_) => {
             println!("HTML Index inserted for {}", index_file_path);
         }
