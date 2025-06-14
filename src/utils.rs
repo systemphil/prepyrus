@@ -195,7 +195,7 @@ impl Utils {
             return Err("Invalid mode. Please provide either 'verify' or 'process'.");
         }
 
-        if cli.generate_index_file.is_some() && cli.mode != Mode::Process {
+        if cli.generate_index_to_file.is_some() && cli.mode != Mode::Process {
             return Err("--generate-index-file can only be used when mode is 'process'");
         }
 
@@ -212,7 +212,7 @@ impl Utils {
             target_path: cli.target_path,
             mode: cli.mode,
             settings,
-            generate_index_file: cli.generate_index_file,
+            generate_index_file: cli.generate_index_to_file,
         })
     }
 

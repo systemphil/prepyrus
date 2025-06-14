@@ -23,9 +23,9 @@ pub struct Cli {
     #[arg(long, value_delimiter = ',')]
     pub ignore_paths: Option<Vec<String>>,
 
-    /// Optional path to write an index file (only applies when mode = process)
+    /// Optional path to generate to an index file (only applies when mode = process)
     #[arg(long)]
-    pub generate_index_file: Option<String>,
+    pub generate_index_to_file: Option<String>,
 }
 
 #[derive(ValueEnum, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

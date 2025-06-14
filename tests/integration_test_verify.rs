@@ -11,7 +11,7 @@ fn run_verify_with_directory() {
         target_path: "tests/mocks/data".to_string(),
         mode: Mode::Verify,
         ignore_paths: None,
-        generate_index_file: None,
+        generate_index_to_file: None,
     };
 
     let Config {
@@ -43,7 +43,7 @@ fn run_verify_with_directory_with_ignored_paths_from_settings() {
         target_path: "tests/mocks/data".to_string(),
         mode: Mode::Verify,
         ignore_paths: None,
-        generate_index_file: None,
+        generate_index_to_file: None,
     };
 
     let Config {
@@ -76,7 +76,7 @@ fn run_verify_with_directory_with_ignored_paths_from_cli_args() {
             target_path: "tests/mocks/data".to_string(),
             mode: Mode::Verify,
             ignore_paths: Some(ignored_paths.clone()),
-            generate_index_file: None,
+            generate_index_to_file: None,
         };
 
         let Config {
@@ -123,7 +123,7 @@ fn run_verify_with_single_file() {
         target_path: "tests/mocks/data/science-of-logic-introduction.mdx".to_string(),
         mode: Mode::Verify,
         ignore_paths: None,
-        generate_index_file: None,
+        generate_index_to_file: None,
     };
 
     let Config {
@@ -155,7 +155,7 @@ fn run_process_with_single_file() {
         target_path: "tests/mocks/data/development_to_process.mdx".to_string(),
         mode: Mode::Process,
         ignore_paths: None,
-        generate_index_file: None,
+        generate_index_to_file: None,
     };
 
     let Config {

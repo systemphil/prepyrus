@@ -37,7 +37,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         target_path: "tests/mocks/data".to_string(),
         mode: Mode::Verify,
         ignore_paths: Some(vec!["tests/mocks/data/development.mdx".into()]),
-        generate_index_file: None,
+        generate_index_to_file: None,
     };
 
     let config = Prepyrus::build_config(cli, None)?;
@@ -167,4 +167,6 @@ impl Prepyrus {
     pub fn process(all_articles: Vec<ArticleFileData>) {
         inserters::process_mdx_files(all_articles)
     }
+
+    pub fn make_index_file(all_articles: Vec<ArticleFileData>, index_file_path: Cli) {}
 }
