@@ -76,6 +76,23 @@ by adding a bibliography section at the end of the file.
 It also adds author, editor, and contributor from the MDX file metadata if available.
 Finally, it also adds a notes heading at the end if footnotes are present in the file.
 
+## Additional Features
+
+**Alphabetical Index Generation**
+
+When running in process mode with the `--generate-index-file <TARET_FILE>` option, Prepyrus now:
+
+- Extracts all `indexTitles` from .mdx files.
+- Sorts them alphabetically by title.
+- Groups them under ## headings by first letter (e.g., ## A, ## B, etc).
+- Writes a neatly structured index to the specified .mdx file.
+
+You can rewrite parts of generated index links using:
+
+```
+--link-prefix-rewrite "/content=/articles"
+```
+
 ## Limitations
 
 The tool currently only supports citations in Chicago author-date style.
