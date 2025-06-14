@@ -10,11 +10,11 @@ that contain citations in Chicago author-date style and certain metadata.
 
 ## Usage
 
-Add the crate to your `Cargo.toml` and use it as shown below:
+Run `cargo add prepyrus` or add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-prepyrus = "0.2"
+prepyrus = "<latest_version>"
 ```
 
 Main API interface is the `Prepyrus` impl. Example usage:
