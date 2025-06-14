@@ -95,7 +95,7 @@ pub fn generate_index_to_file(
         .join(" · ");
 
     let intro = format!(
-    "_This index contains **{} articles**, organized alphabetically by title. Use the links below to jump to a section:_\n\n{}",
+    "\n_This index contains **{} articles**, organized alphabetically by title. Use the links below to jump to a section:_\n\n{}",
     article_count, jump_links
 );
 
