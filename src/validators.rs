@@ -226,28 +226,29 @@ fn check_parentheses_balance(markdown: &String) -> bool {
 fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //      Regex explanation
     //
-    //      \( and \)   match parentheses
-    //      (see\s)?    optionally matches "see "
-    //      @?          optionally matches an @ symbol (for citation keys)
-    //      [A-Za-z]    matches the first letter of the author name or key
-    //      [^()]*?     matches everything except parentheses (non-greedy)
-    //      \d*         matches optional digits (for years or digits inside keys)
-    //      (?:,[^)]*)? optionally matches a comma and any text afterward (page numbers, locators)
-
-    //      \(      Match an opening parenthesis
-    //     (see\s)? Optionally match the word "see" followed by a whitespace
-    //      ([A-Z]  Match a capital letter
-    //      [^()]*? Match any character except opening and closing parenthesis
-    //      \d+     Match one or more digits
-    //      (?:     Start a non-capturing group
-    //      ,       Match a comma
-    //      [^)]*   Match any character except closing parenthesis
-    //      )?      End the non-capturing group and make it optional
-    //      \)      Match a closing parenthesis
+    //      \(              Match an opening parenthesis
+    //      (see\s)?        Optionally match the word "see" followed by a whitespace
+    //      (               Start capturing group for citation content
+    //      @[^(),\s]+      Match @ followed by one or more non-comma, non-parenthesis, non-whitespace chars
+    //      |               OR
+    //      [A-Z]           Match a capital letter (traditional author format)
+    //      [^()]*?         Match any character except parentheses (non-greedy)
+    //      \d+             Match one or more digits (year)
+    //      )               End capturing group
+    //      (?:             Start non-capturing group for optional page numbers
+    //      ,               Match a comma
+    //      [^)]*           Match any character except closing parenthesis
+    //      )?              End non-capturing group, make it optional
+    //      \)              Match a closing parenthesis
     //
-    // The regex will match citations in the format (Author_last_name 2021) or (Author_last_name 2021, 123)
+    // The regex will match citations in these formats:
+    // - (@hegel1991logic, 123)
+    // - (see @hegel1991logic, 123)
+    // - (Hegel 2022, 123)
+    // - (see Hegel 2022, 123)
     //
-    let citation_regex = Regex::new(r"\((see\s)?(@?[A-Za-z][^()]*?\d*(?:,[^)]*)?)\)").unwrap();
+    let citation_regex =
+        Regex::new(r"\((see\s)?(@[^(),\s]+|[A-Z][^()]*?\d+)(?:,[^)]*)?\)").unwrap();
     let mut citations = Vec::new();
 
     for line in markdown.lines() {
