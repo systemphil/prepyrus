@@ -1,17 +1,19 @@
 use biblatex::{Entry, EntryType};
+use std::collections::HashMap;
 use utils::BiblatexUtils;
 
 use crate::utils;
 
 /// Transform a list of entries into a list of strings according to the Chicago bibliography style.
 pub fn entries_to_strings(entries: Vec<Entry>) -> Vec<String> {
+    let entries_clone = entries.clone();
     let sorted_entries = sort_entries(entries);
     let mut strings_output: Vec<String> = Vec::new();
 
     for entry in sorted_entries {
         match entry.entry_type {
             EntryType::Book => {
-                strings_output.push(transform_book_entry(&entry));
+                strings_output.push(transform_book_entry(&entry, entries_clone.clone()));
             }
             EntryType::Article => strings_output.push(transform_article_entry(&entry)),
             _ => println!("Entry type not supported: {:?}", entry.entry_type),
@@ -22,14 +24,14 @@ pub fn entries_to_strings(entries: Vec<Entry>) -> Vec<String> {
 }
 
 /// Transform a book entry into a string according to the Chicago bibliography style.
-fn transform_book_entry(entry: &Entry) -> String {
+fn transform_book_entry(entry: &Entry, entries: Vec<Entry>) -> String {
     let mut book_string = String::new();
 
     let author = entry.author().unwrap();
     let title = extract_title(entry);
     let publisher = extract_publisher(entry);
     let address = extract_address(entry);
-    let year = extract_date(entry);
+    let year = extract_date_with_context(entry, entries);
     let translators = entry.translator().unwrap_or(Vec::new());
     let doi = entry.doi().unwrap_or("".to_string());
 
@@ -129,7 +131,7 @@ fn add_doi(doi: String, target_string: &mut String) {
 }
 
 /// Add year to the target string.
-fn add_year(year: i32, target_string: &mut String) {
+fn add_year(year: String, target_string: &mut String) {
     target_string.push_str(&format!("{}. ", year));
 }
 
@@ -238,4 +240,70 @@ fn extract_pages(entry: &Entry) -> String {
     let pages_permissive = entry.pages().unwrap();
     let pages = BiblatexUtils::extract_pages(&pages_permissive);
     pages
+}
+
+/// Extracts year with disambiguation letter if needed
+/// Returns the year as a string with letter suffix (e.g., "1991a", "1991b") for disambiguation
+fn extract_date_with_disambiguation(entries: Vec<Entry>) -> HashMap<String, String> {
+    let mut year_map = HashMap::new();
+    let mut author_year_counts: HashMap<String, Vec<String>> = HashMap::new();
+
+    // First pass: group entries by author-year combination
+    for entry in &entries {
+        let author = entry.author().unwrap();
+        let author_last_name = author[0].name.clone();
+
+        let date = entry.date().unwrap();
+        let year = BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap();
+
+        let author_year_key = format!("{}-{}", author_last_name, year);
+        let entry_key = entry.key.clone();
+
+        author_year_counts
+            .entry(author_year_key)
+            .or_insert_with(Vec::new)
+            .push(entry_key);
+    }
+
+    // Second pass: assign disambiguation letters
+    for entry in &entries {
+        let author = entry.author().unwrap();
+        let author_last_name = author[0].name.clone();
+
+        let date = entry.date().unwrap();
+        let year = BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap();
+
+        let author_year_key = format!("{}-{}", author_last_name, year);
+        let entry_key = entry.key.clone();
+
+        let entries_for_author_year = author_year_counts.get(&author_year_key).unwrap();
+
+        let disambiguated_year = if entries_for_author_year.len() > 1 {
+            // Multiple entries for same author-year, add letter
+            let position = entries_for_author_year
+                .iter()
+                .position(|k| k == &entry_key)
+                .unwrap();
+            let letter = char::from(b'a' + position as u8);
+            format!("{}{}", year, letter)
+        } else {
+            // Only one entry for this author-year, no disambiguation needed
+            year.to_string()
+        };
+
+        year_map.insert(entry_key, disambiguated_year);
+    }
+
+    year_map
+}
+
+/// Updated extract_date function that uses disambiguation
+fn extract_date_with_context(entry: &Entry, entries: Vec<Entry>) -> String {
+    let disambiguation_map = extract_date_with_disambiguation(entries);
+    let key = entry.key.clone();
+
+    disambiguation_map
+        .get(&key)
+        .unwrap_or(&"Unknown".to_string())
+        .clone()
 }
