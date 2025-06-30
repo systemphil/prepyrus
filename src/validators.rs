@@ -226,6 +226,14 @@ fn check_parentheses_balance(markdown: &String) -> bool {
 fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //      Regex explanation
     //
+    //      \( and \)   match parentheses
+    //      (see\s)?    optionally matches "see "
+    //      @?          optionally matches an @ symbol (for citation keys)
+    //      [A-Za-z]    matches the first letter of the author name or key
+    //      [^()]*?     matches everything except parentheses (non-greedy)
+    //      \d*         matches optional digits (for years or digits inside keys)
+    //      (?:,[^)]*)? optionally matches a comma and any text afterward (page numbers, locators)
+
     //      \(      Match an opening parenthesis
     //     (see\s)? Optionally match the word "see" followed by a whitespace
     //      ([A-Z]  Match a capital letter
@@ -239,7 +247,7 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //
     // The regex will match citations in the format (Author_last_name 2021) or (Author_last_name 2021, 123)
     //
-    let citation_regex = Regex::new(r"\((see\s)?([A-Z][^()]*?\d+(?:,[^)]*)?)\)").unwrap();
+    let citation_regex = Regex::new(r"\((see\s)?(@?[A-Za-z][^()]*?\d*(?:,[^)]*)?)\)").unwrap();
     let mut citations = Vec::new();
 
     for line in markdown.lines() {
