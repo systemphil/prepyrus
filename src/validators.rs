@@ -267,8 +267,13 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
 /// Verifies the format of the citations extracted from the markdown.
 /// The citations are expected to be in the format (Author_last_name 2021)
 /// or (Author_last_name 2021, 123)
+/// Citations starting with a @key will be ignored.
 fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
     for citation in citations {
+        if citation.starts_with("@") {
+            continue;
+        }
+
         let citation_split = citation.splitn(2, ',').collect::<Vec<&str>>();
         let first_part = citation_split[0].trim();
         let has_year = first_part.split_whitespace().any(|word| {
