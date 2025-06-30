@@ -399,12 +399,30 @@ mod tests_citation_extraction {
     }
 
     #[test]
+    fn multiple_citations_with_key() {
+        let markdown = String::from(
+            "This is a citation (@spinoza2021logic) and another one (@kant2020logic, 123).",
+        );
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["@spinoza2021logic", "@kant2020logic, 123"]);
+    }
+
+    #[test]
     fn multiple_citations_prefixed_see() {
         let markdown = String::from(
             "This is a citation (see Spinoza 2021) and another one (see Kant 2020, 123).",
         );
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
+    }
+
+    #[test]
+    fn multiple_citations_mixed_prefixed_see() {
+        let markdown = String::from(
+            "This is a citation (see Spinoza 2021) and another one (see @kant2020logic, 123).",
+        );
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["Spinoza 2021", "@kant2020logic, 123"]);
     }
 
     #[test]
