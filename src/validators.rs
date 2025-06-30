@@ -226,14 +226,14 @@ fn check_parentheses_balance(markdown: &String) -> bool {
 fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //      Regex explanation
     //
-    //      \(      Match an opening parenthesis
-    //     (see\s)? Optionally match the word "see" followed by a whitespace
-    //      (       Start capturing group for citation content
-    //          @[^(),\s]+(?:,[^)]*)? Match @ key with optional page numbers
-    //          |   OR
-    //          [A-Z][^()]*?\d+(?:,[^)]*)? Match traditional author format with optional page numbers
-    //      )       End capturing group
-    //      \)      Match a closing parenthesis
+    //      \(                          Match an opening parenthesis
+    //      (see\s)?                    Optionally match the word "see" followed by a whitespace
+    //      (                           Start capturing group for citation content
+    //      @[^(),\s]+(?:,[^)]*)?       Match @ key with optional page numbers
+    //      |                           OR
+    //      [A-Z][^()]*?\d+(?:,[^)]*)?  Match traditional author format with optional page numbers
+    //      )                           End capturing group
+    //      \)                          Match a closing parenthesis
     //
     // The regex will match citations in these formats:
     // - (@hegel1991logic, 123)
