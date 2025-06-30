@@ -13,9 +13,7 @@ pub fn entries_to_strings(entries: Vec<Entry>) -> Vec<String> {
             EntryType::Book => {
                 strings_output.push(transform_book_entry(&entry));
             }
-            EntryType::Article => {
-                strings_output.push(transform_article_entry(&entry))
-            }
+            EntryType::Article => strings_output.push(transform_article_entry(&entry)),
             _ => println!("Entry type not supported: {:?}", entry.entry_type),
         }
     }
@@ -61,16 +59,14 @@ fn transform_article_entry(entry: &Entry) -> String {
 
     add_authors(author, &mut article_string);
     add_article_title(title, &mut article_string);
-    add_journal_volume_number_year_pages(
-        journal, volume, number, year, pages, &mut article_string,
-    );
+    add_journal_volume_number_year_pages(journal, volume, number, year, pages, &mut article_string);
     add_translators(translators, &mut article_string);
     add_doi(doi, &mut article_string);
 
     article_string.trim_end().to_string()
 }
 
-/// Generate a string of a type of contributors. 
+/// Generate a string of a type of contributors.
 /// E.g. "Edited", "Translated" become "Edited by", "Translated by".
 /// Handles the case when there are multiple contributors.
 fn generate_contributors(
@@ -104,9 +100,9 @@ fn add_authors(author: Vec<biblatex::Person>, bib_html: &mut String) {
             author[0].name, author[0].given_name
         ));
     } else if author.len() == 2 {
-        // In Chicago style, when listing multiple authors in a bibliography entry, 
-        // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent 
-        // authors' names are written in standard order (i.e., "First Last"). 
+        // In Chicago style, when listing multiple authors in a bibliography entry,
+        // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent
+        // authors' names are written in standard order (i.e., "First Last").
         // This rule helps differentiate the primary author from co-authors.
         bib_html.push_str(&format!(
             "{}, {} and {} {}. ",
@@ -173,14 +169,16 @@ fn sort_entries(entries: Vec<Entry>) -> Vec<Entry> {
     sorted_entries.sort_by(|a, b| {
         let a_authors = a.author().unwrap_or_default();
         let b_authors = b.author().unwrap_or_default();
-        
-        let a_last_name = a_authors.first()
+
+        let a_last_name = a_authors
+            .first()
             .map(|p| p.name.clone().to_lowercase())
             .unwrap_or_default();
-        let b_last_name = b_authors.first()
+        let b_last_name = b_authors
+            .first()
             .map(|p| p.name.clone().to_lowercase())
             .unwrap_or_default();
-        
+
         a_last_name.cmp(&b_last_name)
     });
     sorted_entries
