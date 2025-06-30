@@ -316,17 +316,33 @@ fn match_citations_to_bibliography(
 
     for citation in citations {
         for entry in bibliography {
-            let author = entry.author().unwrap();
-            let author_last_name = author[0].name.clone();
+            let mut is_match = false;
 
-            let date: biblatex::PermissiveType<biblatex::Date> = entry.date().unwrap();
-            let year = BiblatexUtils::extract_year_from_date(&date, citation.clone()).unwrap();
+            if citation.starts_with('@') {
+                let citation_key = citation.split(',').next().unwrap().trim(); // Extract the key part (everything before comma if present)
+                let citation_key = &citation_key[1..]; // Remove @ prefix
 
-            let author_year = format!("{} {:?}", author_last_name, year);
+                if entry.key == citation_key {
+                    is_match = true;
+                }
+            } else {
+                let author = entry.author().unwrap();
+                let author_last_name = author[0].name.clone();
 
-            if citation == author_year {
+                let date: biblatex::PermissiveType<biblatex::Date> = entry.date().unwrap();
+                let year = BiblatexUtils::extract_year_from_date(&date, citation.clone()).unwrap();
+
+                let author_year = format!("{} {:?}", author_last_name, year);
+
+                if citation == author_year {
+                    is_match = true;
+                }
+            }
+
+            if is_match {
                 unmatched_citations.retain(|x| x != &citation);
                 matched_citations.push(entry.clone());
+                break; // Move to next citation once we find a match
             }
         }
     }
