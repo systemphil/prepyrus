@@ -375,12 +375,21 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Hegel 2021"]);
     }
+
+    #[test]
+    fn single_citation_key() {
+        let markdown = String::from("This is a citation (@hegel1991logic) in the text.");
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["@hegel1991logic"]);
+    }
+
     #[test]
     fn single_citation_prefixed_see() {
         let markdown = String::from("This is a citation (see Hegel 2021) in the text.");
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Hegel 2021"]);
     }
+
     #[test]
     fn multiple_citations() {
         let markdown =
@@ -388,6 +397,7 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
     }
+
     #[test]
     fn multiple_citations_prefixed_see() {
         let markdown = String::from(
@@ -396,18 +406,21 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
     }
+
     #[test]
     fn no_citation() {
         let markdown = String::from("This text has no citations.");
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, Vec::<String>::new());
     }
+
     #[test]
     fn citation_with_additional_text() {
         let markdown = String::from("This citation (Plato 2019) has additional text.");
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Plato 2019"]);
     }
+
     #[test]
     fn multiple_lines() {
         let markdown = String::from(
@@ -418,18 +431,21 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Aristotle 2020", "Hume 2018"]);
     }
+
     #[test]
     fn incomplete_citation_opening_parenthesis_only() {
         let markdown = String::from("This is an incomplete citation (Spinoza 2021.");
         let valid_citations = extract_citations_from_markdown(&markdown);
         assert!(valid_citations.is_empty());
     }
+
     #[test]
     fn incomplete_citation_closing_parenthesis_only() {
         let markdown = String::from("This is an incomplete citation Descartes 2021).");
         let valid_citations = extract_citations_from_markdown(&markdown);
         assert!(valid_citations.is_empty());
     }
+
     #[test]
     fn mixed_valid_and_invalid_citations() {
         let markdown =
@@ -448,11 +464,13 @@ mod tests_validate_citations {
         let citations = vec!["Hegel 2021".to_string(), "Kant 2020, 123".to_string()];
         assert!(verify_citations_format(&citations).is_ok());
     }
+
     #[test]
     fn missing_year() {
         let citations = vec!["Hegel".to_string(), "Kant 2020, 123".to_string()];
         assert!(verify_citations_format(&citations).is_err());
     }
+
     #[test]
     fn invalid_citation_extra_comma() {
         let citations = vec![
@@ -462,6 +480,7 @@ mod tests_validate_citations {
         ];
         assert!(verify_citations_format(&citations).is_err());
     }
+
     #[test]
     fn valid_citations_set() {
         let citations = vec![
@@ -474,18 +493,21 @@ mod tests_validate_citations {
         let citations_set = create_citations_set(citations);
         assert_eq!(citations_set, vec!["Hegel 2021", "Kant 2020"]);
     }
+
     #[test]
     fn empty_citations_set() {
         let citations = Vec::<String>::new();
         let citations_set = create_citations_set(citations);
         assert!(citations_set.is_empty());
     }
+
     #[test]
     fn invalid_citations_set() {
         let citations = vec!["Hegel 2021".to_string(), "Kant, 2020, 123".to_string()];
         let citations_set = create_citations_set(citations);
         assert_eq!(citations_set, vec!["Hegel 2021", "Kant"]);
     }
+
     // TODO what happened here? investigate
     // #[test]
     // fn test_match_citations_to_bibliography() {
