@@ -226,20 +226,14 @@ fn check_parentheses_balance(markdown: &String) -> bool {
 fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //      Regex explanation
     //
-    //      \(          Match an opening parenthesis
-    //      (see\s)?    Optionally match the word "see" followed by a whitespace
-    //      (           Start capturing group for citation content
-    //          @[^(),\s]+ Match @ followed by one or more non-comma, non-parenthesis, non-whitespace chars
-    //          |       OR
-    //          [A-Z]   Match a capital letter (traditional author format)
-    //          [^()]*? Match any character except parentheses (non-greedy)
-    //          \d+     Match one or more digits (year)
-    //      )           End capturing group
-    //      (?:         Start non-capturing group for optional page numbers
-    //          ,       Match a comma
-    //          [^)]*   Match any character except closing parenthesis
-    //      )?          End non-capturing group, make it optional
-    //      \)          Match a closing parenthesis
+    //      \(      Match an opening parenthesis
+    //     (see\s)? Optionally match the word "see" followed by a whitespace
+    //      (       Start capturing group for citation content
+    //          @[^(),\s]+(?:,[^)]*)? Match @ key with optional page numbers
+    //          |   OR
+    //          [A-Z][^()]*?\d+(?:,[^)]*)? Match traditional author format with optional page numbers
+    //      )       End capturing group
+    //      \)      Match a closing parenthesis
     //
     // The regex will match citations in these formats:
     // - (@hegel1991logic, 123)
@@ -248,7 +242,7 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     // - (see Hegel 2022, 123)
     //
     let citation_regex =
-        Regex::new(r"\((see\s)?((@[^(),\s]+|[A-Z][^()]*?\d+)(?:,[^)]*)?)?\)").unwrap();
+        Regex::new(r"\((see\s)?(@[^(),\s]+(?:,[^)]*)?|[A-Z][^()]*?\d+(?:,[^)]*)?)\)").unwrap();
 
     let mut citations = Vec::new();
 
