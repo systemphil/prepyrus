@@ -29,6 +29,7 @@ pub fn entries_to_strings(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<St
     strings_output
 }
 
+/// Finds and replaces bibtex keys with disambiguated inline citations
 pub fn transform_keys_to_citations(article_file_data: &ArticleFileData) -> String {
     let mut full_content = article_file_data.full_file_content.clone();
 
@@ -42,6 +43,78 @@ pub fn transform_keys_to_citations(article_file_data: &ArticleFileData) -> Strin
     }
 
     full_content
+}
+
+/// Transform MatchedCitation vector into MatchedCitationDisambiguated vector
+/// This handles all disambiguation logic in one place
+pub fn disambiguate_matched_citations(
+    citations: Vec<MatchedCitation>,
+) -> Vec<MatchedCitationDisambiguated> {
+    // Group citations by author-year for disambiguation analysis
+    let mut author_year_groups: HashMap<String, Vec<&MatchedCitation>> = HashMap::new();
+
+    for citation in &citations {
+        let author = citation.entry.author().unwrap();
+        let author_last_name = author[0].name.clone();
+
+        let date = citation.entry.date().unwrap();
+        let year =
+            BiblatexUtils::extract_year_from_date(&date, citation.entry.key.clone()).unwrap();
+
+        let author_year_key = format!("{}-{}", author_last_name, year);
+        author_year_groups
+            .entry(author_year_key)
+            .or_insert_with(Vec::new)
+            .push(citation);
+    }
+
+    // Create disambiguation mapping
+    let mut citation_to_disambiguated: HashMap<String, String> = HashMap::new();
+    let mut year_to_disambiguated: HashMap<String, String> = HashMap::new();
+
+    for (_author_year_key, group_citations) in author_year_groups {
+        if group_citations.len() > 1 {
+            // Need disambiguation - sort by entry key for consistent ordering
+            let mut sorted_citations = group_citations;
+            sorted_citations.sort_by(|a, b| a.entry.key.cmp(&b.entry.key));
+
+            for (index, citation) in sorted_citations.iter().enumerate() {
+                let letter = char::from(b'a' + index as u8);
+                let disambiguated = create_disambiguated_citation(letter, &citation.entry);
+                citation_to_disambiguated.insert(citation.citation_raw.clone(), disambiguated);
+                let disambiguated_year = create_disambiguated_year(letter, &citation.entry);
+                year_to_disambiguated.insert(citation.citation_raw.clone(), disambiguated_year);
+            }
+        } else {
+            // No disambiguation needed - convert to standard format
+            let citation = group_citations[0];
+            let standard = create_standard_citation(&citation.citation_raw, &citation.entry);
+            citation_to_disambiguated.insert(citation.citation_raw.clone(), standard);
+        }
+    }
+
+    // Transform all citations using the disambiguation map
+    citations
+        .into_iter()
+        .map(|matched_citation| {
+            let disambiguated = citation_to_disambiguated
+                .get(&matched_citation.citation_raw)
+                .cloned()
+                .unwrap_or_else(|| matched_citation.citation_raw.clone()); // Fallback
+
+            let disambiguated_year = year_to_disambiguated
+                .get(&matched_citation.citation_raw)
+                .cloned()
+                .unwrap_or_else(|| extract_date(&matched_citation.entry).to_string());
+
+            MatchedCitationDisambiguated {
+                citation_raw: matched_citation.citation_raw,
+                citation_author_date_disambiguated: disambiguated,
+                year_disambiguated: disambiguated_year,
+                entry: matched_citation.entry,
+            }
+        })
+        .collect()
 }
 
 /// Transform a book entry into a string according to the Chicago bibliography style.
@@ -297,78 +370,6 @@ fn extract_pages(entry: &Entry) -> String {
     pages
 }
 
-/// Transform MatchedCitation vector into MatchedCitationDisambiguated vector
-/// This handles all disambiguation logic in one place
-pub fn disambiguate_matched_citations(
-    citations: Vec<MatchedCitation>,
-) -> Vec<MatchedCitationDisambiguated> {
-    // Group citations by author-year for disambiguation analysis
-    let mut author_year_groups: HashMap<String, Vec<&MatchedCitation>> = HashMap::new();
-
-    for citation in &citations {
-        let author = citation.entry.author().unwrap();
-        let author_last_name = author[0].name.clone();
-
-        let date = citation.entry.date().unwrap();
-        let year =
-            BiblatexUtils::extract_year_from_date(&date, citation.entry.key.clone()).unwrap();
-
-        let author_year_key = format!("{}-{}", author_last_name, year);
-        author_year_groups
-            .entry(author_year_key)
-            .or_insert_with(Vec::new)
-            .push(citation);
-    }
-
-    // Create disambiguation mapping
-    let mut citation_to_disambiguated: HashMap<String, String> = HashMap::new();
-    let mut year_to_disambiguated: HashMap<String, String> = HashMap::new();
-
-    for (_author_year_key, group_citations) in author_year_groups {
-        if group_citations.len() > 1 {
-            // Need disambiguation - sort by entry key for consistent ordering
-            let mut sorted_citations = group_citations;
-            sorted_citations.sort_by(|a, b| a.entry.key.cmp(&b.entry.key));
-
-            for (index, citation) in sorted_citations.iter().enumerate() {
-                let letter = char::from(b'a' + index as u8);
-                let disambiguated = create_disambiguated_citation(letter, &citation.entry);
-                citation_to_disambiguated.insert(citation.citation_raw.clone(), disambiguated);
-                let disambiguated_year = create_disambiguated_year(letter, &citation.entry);
-                year_to_disambiguated.insert(citation.citation_raw.clone(), disambiguated_year);
-            }
-        } else {
-            // No disambiguation needed - convert to standard format
-            let citation = group_citations[0];
-            let standard = create_standard_citation(&citation.citation_raw, &citation.entry);
-            citation_to_disambiguated.insert(citation.citation_raw.clone(), standard);
-        }
-    }
-
-    // Transform all citations using the disambiguation map
-    citations
-        .into_iter()
-        .map(|matched_citation| {
-            let disambiguated = citation_to_disambiguated
-                .get(&matched_citation.citation_raw)
-                .cloned()
-                .unwrap_or_else(|| matched_citation.citation_raw.clone()); // Fallback
-
-            let disambiguated_year = year_to_disambiguated
-                .get(&matched_citation.citation_raw)
-                .cloned()
-                .unwrap_or_else(|| extract_date(&matched_citation.entry).to_string());
-
-            MatchedCitationDisambiguated {
-                citation_raw: matched_citation.citation_raw,
-                citation_author_date_disambiguated: disambiguated,
-                year_disambiguated: disambiguated_year,
-                entry: matched_citation.entry,
-            }
-        })
-        .collect()
-}
-
 /// Create disambiguated citation with letter (e.g., "@hegel2020logic, 123" -> "Hegel 2020a")
 fn create_disambiguated_citation(letter: char, entry: &Entry) -> String {
     let author = format_authors_last_name_only(entry.author().unwrap());
@@ -376,6 +377,7 @@ fn create_disambiguated_citation(letter: char, entry: &Entry) -> String {
     format!("{} {}{}", author, year, letter)
 }
 
+/// Create a disambiguated year (e.g., "2018a")
 fn create_disambiguated_year(letter: char, entry: &Entry) -> String {
     let year = extract_date(entry);
     format!("{}{}", year, letter)
@@ -397,3 +399,5 @@ fn create_standard_citation(raw_citation: &str, entry: &Entry) -> String {
         raw_citation.to_string()
     }
 }
+
+// TODO build test suite for creating disambiguate_matched_citations

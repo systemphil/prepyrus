@@ -3,6 +3,8 @@
 [![Build status](https://github.com/systemphil/prepyrus/workflows/Continuous%20integration/badge.svg)](https://github.com/systemphil/prepyrus/actions)
 [![Current crates.io release](https://img.shields.io/crates/v/prepyrus)](https://crates.io/crates/prepyrus)
 
+// TODO Update readme with disambiguation
+
 Prepyrus is a tool for verifying and processing MDX files
 that contain citations in Chicago author-date style and certain metadata.
 

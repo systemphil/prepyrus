@@ -100,8 +100,6 @@ pub struct MatchedCitationDisambiguated {
     pub entry: Entry,
 }
 
-// TODO build test suite for missing keys when keys are used
-
 impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
     type Error = Box<dyn std::error::Error>;
 
@@ -359,7 +357,7 @@ fn create_citations_set(citations: Vec<String>) -> Vec<String> {
 
 /// Matches citations to the inputted bibliography
 /// the matched list is returned with full bibliographical details.
-/// If any citation is not found in the bibliography, an error is returned.
+/// Returns error for any unmatched or ambiguous citations.
 fn match_citations_to_bibliography(
     citations: Vec<String>,
     bibliography: &Vec<Entry>,
