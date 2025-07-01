@@ -5,9 +5,10 @@ use validators::{MatchedCitation, MatchedCitationDisambiguated};
 
 use crate::utils;
 use crate::validators;
+use crate::validators::ArticleFileData;
 
 /// Transform a list of entries into a list of strings according to the Chicago bibliography style.
-pub fn entries_to_strings(entries: Vec<MatchedCitationDisambiguated>) -> Vec<String> {
+pub fn entries_to_strings(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<String> {
     let sorted_entries = sort_entries(entries);
     let mut strings_output: Vec<String> = Vec::new();
 
@@ -25,6 +26,21 @@ pub fn entries_to_strings(entries: Vec<MatchedCitationDisambiguated>) -> Vec<Str
     }
 
     strings_output
+}
+
+pub fn transform_keys_to_citations(article_file_data: &ArticleFileData) -> String {
+    let mut full_content = article_file_data.full_file_content.clone();
+
+    for matched_citation in &article_file_data.entries_disambiguated {
+        if matched_citation.citation_raw.starts_with('@') {
+            full_content = full_content.replace(
+                &matched_citation.citation_raw,
+                &matched_citation.citation_author_date_disambiguated,
+            );
+        }
+    }
+
+    full_content
 }
 
 /// Transform a book entry into a string according to the Chicago bibliography style.
@@ -171,7 +187,7 @@ fn add_journal_volume_number_pages(
 }
 
 /// Sort entries by author's last name.
-fn sort_entries(entries: Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitationDisambiguated> {
+fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitationDisambiguated> {
     let mut sorted_entries = entries.clone();
     sorted_entries.sort_by(|a, b| {
         let a_authors = a.entry.author().unwrap_or_default();

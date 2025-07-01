@@ -39,7 +39,7 @@ pub struct ArticleFileData {
     pub metadata: Metadata,
     /// Contents of the file.
     pub markdown_content: String,
-    /// A set of citations that exist in the source `.bib` file.
+    /// A set of citations that exist in the source `.bib` file with disambiguated author date and date.
     pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
@@ -53,7 +53,7 @@ pub struct ArticleFileDataUnverified {
     pub metadata: MetadataUnverified,
     /// Contents of the file.
     pub markdown_content: String,
-    /// A set of citations that exist in the source `.bib` file.
+    /// A set of citations that exist in the source `.bib` file with disambiguated author date and date.
     pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
