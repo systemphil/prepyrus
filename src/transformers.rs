@@ -142,6 +142,17 @@ fn format_authors(author: Vec<biblatex::Person>) -> String {
     }
 }
 
+///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
+fn format_authors_last_name_only(author: Vec<biblatex::Person>) -> String {
+    if author.len() > 2 {
+        return format!("{} et al.", author[0].name);
+    } else if author.len() == 2 {
+        return format!("{} and {}", author[0].name, author[1].name);
+    } else {
+        return format!("{}", author[0].name);
+    }
+}
+
 /// Add translators to the target string if they exist.
 fn add_translators(translators: Vec<biblatex::Person>, target_string: &mut String) {
     let translators_mdx = generate_contributors(translators, "Translated".to_string());
@@ -337,7 +348,7 @@ pub fn disambiguate_matched_citations(
 
 /// Create disambiguated citation with letter (e.g., "@hegel2020logic, 123" -> "Hegel 2020a")
 fn create_disambiguated_citation(letter: char, entry: &Entry) -> String {
-    let author = format_authors(entry.author().unwrap());
+    let author = format_authors_last_name_only(entry.author().unwrap());
     let year = extract_date(entry);
     format!("{} {}{}", author, year, letter)
 }
