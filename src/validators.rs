@@ -33,42 +33,56 @@ pub struct MetadataUnverified {
     pub contributors: Option<String>,
 }
 
+/// Contents of an article file as well as path and matched entries.
 #[derive(Debug, Clone)]
 pub struct ArticleFileData {
     /// Path to the file whose contents were extracted.
     pub path: String,
+
     /// Metadata enclosed at the top of the file.
     pub metadata: Metadata,
+
     /// Contents of the file.
     pub markdown_content: String,
+
     /// A set of citations that exist in the source `.bib` file with disambiguated author date and date.
     pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
+
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
 }
 
+/// Contents of an article file as well as path and matched entries, but where some fields are unverified.
 #[derive(Debug, Clone)]
 pub struct ArticleFileDataUnverified {
     /// Path to the file whose contents were extracted.
     pub path: String,
+
     /// Metadata (unverified) enclosed at the top of the file.
     pub metadata: MetadataUnverified,
+
     /// Contents of the file.
     pub markdown_content: String,
+
     /// A set of citations that exist in the source `.bib` file with disambiguated author date and date.
     pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
+
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
 }
 
+/// Citation from an article that has found a match in the source bibliography.
 #[derive(Debug, Clone)]
 pub struct MatchedCitation {
     /// Original citation. E.g., "@hegel2020logic, 123" or "Hegel 2020, 123"
     pub citation_raw: String,
+
     /// bilblatex bibliographical Entry
     pub entry: Entry,
 }
 
+/// Citation from an article that has found a match in the source bibliography that also
+/// includes disambiguated author date `String` and year `String`.
 #[derive(Debug, Clone)]
 pub struct MatchedCitationDisambiguated {
     /// Original citation. E.g., "@hegel2020logic, 123" or "Hegel 2020, 123"
@@ -86,8 +100,6 @@ pub struct MatchedCitationDisambiguated {
     pub entry: Entry,
 }
 
-// TODO program should throw if it finds multiple entries under the same author year, requesting disambiguiation by key
-// TODO in that case program should offer alternatives by key
 // TODO build test suite for missing keys when keys are used
 
 impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
@@ -318,6 +330,7 @@ fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
                 false
             }
         });
+
         if !has_year {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -419,7 +432,7 @@ fn check_for_ambiguous_citations(
     }
 
     if !ambiguous_citations.is_empty() {
-        let mut error_msg = String::from("Ambiguous citations found:\n");
+        let mut error_msg = String::from("");
         for (citation, entries) in ambiguous_citations {
             let entry_keys: Vec<String> = entries
                 .iter()
@@ -619,15 +632,32 @@ mod tests_validate_citations {
         assert_eq!(citations_set, vec!["Hegel 2021", "Kant"]);
     }
 
-    // TODO what happened here? investigate
-    // #[test]
-    // fn test_match_citations_to_bibliography() {
-    //     let bibliography = vec![
-    //         Entry::new("book", "Hegel 2021"),
-    //         Entry::new("book", "Kant 2020"),
-    //     ];
-    //     let citations = vec!["Hegel 2021".to_string(), "Kant 2020".to_string()];
-    //     let matched_citations = match_citations_to_bibliography(citations, &bibliography).unwrap();
-    //     assert_eq!(matched_citations, bibliography);
-    // }
+    #[test]
+    fn match_three_citations_to_bibliography() {
+        let bibliography =
+            BiblatexUtils::retrieve_bibliography_entries("tests/mocks/test.bib").unwrap();
+        let citations = vec![
+            "Hegel 2010".to_string(),
+            "Hegel 2018".to_string(),
+            "Burbidge 1981".to_string(),
+        ];
+        let matched_citations = match_citations_to_bibliography(citations, &bibliography).unwrap();
+        assert_eq!(matched_citations.len(), 3);
+    }
+
+    #[test]
+    fn error_on_ambiguous_citations() {
+        let bibliography =
+            BiblatexUtils::retrieve_bibliography_entries("tests/mocks/test.bib").unwrap();
+        let citations = vec!["Hegel 1991".to_string()];
+        let result = match_citations_to_bibliography(citations, &bibliography);
+
+        match result {
+            Err(CitationError::AmbiguousMatch(msg)) => {
+                assert!(msg.contains("'Hegel 1991' might refer to multiple entries: key: hegel1991logic, key: hegel1991encyclopaedialogic"));
+            }
+            Err(e) => panic!("Expected AmbiguousMatch, but got different error: {:?}", e),
+            Ok(_) => panic!("Expected error, but got Ok"),
+        }
+    }
 }

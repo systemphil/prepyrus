@@ -14,7 +14,7 @@ impl fmt::Display for CitationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CitationError::AmbiguousMatch(details) => {
-                write!(f, "Ambiguous citation match:\n{}", details)
+                write!(f, "Ambiguous citations found:\n{}", details)
             }
             CitationError::UnmatchedCitations(citations) => {
                 write!(f, "Citations not found in the library: {:?}", citations)
