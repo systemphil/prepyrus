@@ -1,3 +1,4 @@
+use biblatex::Person;
 use biblatex::{Entry, EntryType};
 use std::collections::HashMap;
 use utils::BiblatexUtils;
@@ -200,22 +201,44 @@ fn add_journal_volume_number_pages(
 /// Sort entries by author's last name.
 fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitationDisambiguated> {
     let mut sorted_entries = entries.clone();
+
     sorted_entries.sort_by(|a, b| {
         let a_authors = a.entry.author().unwrap_or_default();
         let b_authors = b.entry.author().unwrap_or_default();
 
-        let a_last_name = a_authors
-            .first()
-            .map(|p| p.name.clone().to_lowercase())
-            .unwrap_or_default();
-        let b_last_name = b_authors
-            .first()
-            .map(|p| p.name.clone().to_lowercase())
-            .unwrap_or_default();
+        // Get author names for comparison
+        let a_author_key = author_key(&a_authors);
+        let b_author_key = author_key(&b_authors);
 
-        a_last_name.cmp(&b_last_name)
+        // Compare by author(s)
+        let cmp_author = a_author_key.cmp(&b_author_key);
+        if cmp_author != std::cmp::Ordering::Equal {
+            return cmp_author;
+        }
+
+        // Compare by year
+        let a_year = &a.year_disambiguated;
+        let b_year = &b.year_disambiguated;
+        let cmp_year = a_year.cmp(&b_year);
+        if cmp_year != std::cmp::Ordering::Equal {
+            return cmp_year;
+        }
+
+        // Compare by title (for disambiguation)
+        let a_title = extract_title(&a.entry).to_lowercase();
+        let b_title = extract_title(&b.entry).to_lowercase();
+        a_title.cmp(&b_title)
     });
+
     sorted_entries
+}
+
+/// Helper to generate a sortable author string
+fn author_key(authors: &Vec<Person>) -> String {
+    authors
+        .first()
+        .map(|p| p.name.clone().to_lowercase())
+        .unwrap_or_default()
 }
 
 /// Title of the entry.
