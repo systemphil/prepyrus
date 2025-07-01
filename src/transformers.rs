@@ -97,7 +97,7 @@ fn generate_contributors(
 
 /// Add authors and date as is.
 fn add_authors_and_date(author_and_date: String, bib_html: &mut String) {
-    bib_html.push_str(&format!("{}", author_and_date));
+    bib_html.push_str(&format!("{}. ", author_and_date));
 }
 
 ///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
