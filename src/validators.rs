@@ -71,9 +71,15 @@ pub struct MatchedCitation {
 pub struct MatchedCitationDisambiguated {
     /// Original citation. E.g., "@hegel2020logic, 123" or "Hegel 2020, 123"
     pub citation_raw: String,
+
     /// Context aware citation that should include disambiguitation if needed.
     /// E.g. "Hegel 2020a" "Hegel 2020b"
     pub citation_author_date_disambiguated: String,
+
+    /// Context aware year that should include disambiguitation if needed.
+    /// E.g. "2020a" "2020b"
+    pub year_disambiguated: String,
+
     /// bilblatex bibliographical Entry
     pub entry: Entry,
 }

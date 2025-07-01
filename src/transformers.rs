@@ -31,14 +31,16 @@ pub fn entries_to_strings(entries: Vec<MatchedCitationDisambiguated>) -> Vec<Str
 fn transform_book_entry(matched_citation: &MatchedCitationDisambiguated) -> String {
     let mut book_string = String::new();
 
-    let author = matched_citation.citation_author_date_disambiguated.clone();
+    let author = matched_citation.entry.author().unwrap();
+    let year = matched_citation.year_disambiguated.clone();
     let title = extract_title(&matched_citation.entry);
     let publisher = extract_publisher(&matched_citation.entry);
     let address = extract_address(&matched_citation.entry);
     let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
     let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
-    add_authors_and_date(author, &mut book_string);
+    add_authors(author, &mut book_string);
+    add_year(year, &mut book_string);
     add_book_title(title, &mut book_string);
     add_translators(translators, &mut book_string);
     add_address_and_publisher(address, publisher, &mut book_string);
@@ -51,7 +53,8 @@ fn transform_book_entry(matched_citation: &MatchedCitationDisambiguated) -> Stri
 fn transform_article_entry(matched_citation: &MatchedCitationDisambiguated) -> String {
     let mut article_string = String::new();
 
-    let author = matched_citation.citation_author_date_disambiguated.clone();
+    let author = matched_citation.entry.author().unwrap();
+    let year = matched_citation.year_disambiguated.clone();
     let title = extract_title(&matched_citation.entry);
     let journal = extract_journal(&matched_citation.entry);
     let volume = extract_volume(&matched_citation.entry);
@@ -60,7 +63,8 @@ fn transform_article_entry(matched_citation: &MatchedCitationDisambiguated) -> S
     let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
     let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
-    add_authors_and_date(author, &mut article_string);
+    add_authors(author, &mut article_string);
+    add_year(year, &mut article_string);
     add_article_title(title, &mut article_string);
     add_journal_volume_number_pages(journal, volume, number, pages, &mut article_string);
     add_translators(translators, &mut article_string);
@@ -95,9 +99,13 @@ fn generate_contributors(
     contributors_str
 }
 
-/// Add authors and date as is.
-fn add_authors_and_date(author_and_date: String, bib_html: &mut String) {
-    bib_html.push_str(&format!("{}. ", author_and_date));
+fn add_year(year: String, target_string: &mut String) {
+    target_string.push_str(&format!("{}. ", year));
+}
+
+// Adds author(s). Handles multiple.
+fn add_authors(author: Vec<biblatex::Person>, bib_html: &mut String) {
+    bib_html.push_str(&format_authors(author))
 }
 
 ///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
@@ -264,6 +272,7 @@ pub fn disambiguate_matched_citations(
 
     // Create disambiguation mapping
     let mut citation_to_disambiguated: HashMap<String, String> = HashMap::new();
+    let mut year_to_disambiguated: HashMap<String, String> = HashMap::new();
 
     for (_author_year_key, group_citations) in author_year_groups {
         if group_citations.len() > 1 {
@@ -275,6 +284,8 @@ pub fn disambiguate_matched_citations(
                 let letter = char::from(b'a' + index as u8);
                 let disambiguated = create_disambiguated_citation(letter, &citation.entry);
                 citation_to_disambiguated.insert(citation.citation_raw.clone(), disambiguated);
+                let disambiguated_year = create_disambiguated_year(letter, &citation.entry);
+                year_to_disambiguated.insert(citation.citation_raw.clone(), disambiguated_year);
             }
         } else {
             // No disambiguation needed - convert to standard format
@@ -293,9 +304,15 @@ pub fn disambiguate_matched_citations(
                 .cloned()
                 .unwrap_or_else(|| matched_citation.citation_raw.clone()); // Fallback
 
+            let disambiguated_year = year_to_disambiguated
+                .get(&matched_citation.citation_raw)
+                .cloned()
+                .unwrap_or_else(|| extract_date(&matched_citation.entry).to_string());
+
             MatchedCitationDisambiguated {
                 citation_raw: matched_citation.citation_raw,
                 citation_author_date_disambiguated: disambiguated,
+                year_disambiguated: disambiguated_year,
                 entry: matched_citation.entry,
             }
         })
@@ -307,6 +324,11 @@ fn create_disambiguated_citation(letter: char, entry: &Entry) -> String {
     let author = format_authors(entry.author().unwrap());
     let year = extract_date(entry);
     format!("{} {}{}", author, year, letter)
+}
+
+fn create_disambiguated_year(letter: char, entry: &Entry) -> String {
+    let year = extract_date(entry);
+    format!("{}{}", year, letter)
 }
 
 /// Create standard citation format (no disambiguation needed)
