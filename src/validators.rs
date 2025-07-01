@@ -85,6 +85,8 @@ pub struct MatchedCitationDisambiguated {
 }
 
 // TODO program should throw if it finds multiple entries under the same author year, requesting disambiguiation by key
+// TODO in that case program should offer alternatives by key
+// TODO build test suite for missing keys when keys are used
 
 impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
     type Error = Box<dyn std::error::Error>;
