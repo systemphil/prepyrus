@@ -1,4 +1,4 @@
-use crate::BiblatexUtils;
+use crate::{transformers, BiblatexUtils};
 use biblatex::Entry;
 use regex::Regex;
 use serde::Deserialize;
@@ -40,7 +40,7 @@ pub struct ArticleFileData {
     /// Contents of the file.
     pub markdown_content: String,
     /// A set of citations that exist in the source `.bib` file.
-    pub matched_citations: Vec<Entry>,
+    pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
 }
@@ -54,10 +54,31 @@ pub struct ArticleFileDataUnverified {
     /// Contents of the file.
     pub markdown_content: String,
     /// A set of citations that exist in the source `.bib` file.
-    pub matched_citations: Vec<Entry>,
+    pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
 }
+
+#[derive(Debug, Clone)]
+pub struct MatchedCitation {
+    /// Original citation. E.g., "@hegel2020logic, 123" or "Hegel 2020, 123"
+    pub citation_raw: String,
+    /// bilblatex bibliographical Entry
+    pub entry: Entry,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchedCitationDisambiguated {
+    /// Original citation. E.g., "@hegel2020logic, 123" or "Hegel 2020, 123"
+    pub citation_raw: String,
+    /// Context aware citation that should include disambiguitation if needed.
+    /// E.g. "Hegel 2020a" "Hegel 2020b"
+    pub citation_author_date_disambiguated: String,
+    /// bilblatex bibliographical Entry
+    pub entry: Entry,
+}
+
+// TODO program should throw if it finds multiple entries under the same author year, requesting disambiguiation by key
 
 impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
     type Error = Box<dyn std::error::Error>;
@@ -82,7 +103,7 @@ impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
                 contributors: article.metadata.contributors,
             },
             markdown_content: article.markdown_content,
-            matched_citations: article.matched_citations,
+            entries_disambiguated: article.entries_disambiguated,
             full_file_content: article.full_file_content,
         })
     }
@@ -140,11 +161,15 @@ pub fn verify_mdx_files(
                 std::process::exit(1);
             }
         };
+
+        let disambiguated_matched_citations =
+            transformers::disambiguate_matched_citations(matched_citations);
+
         let article = ArticleFileDataUnverified {
             path: mdx_path.clone(),
             metadata,
             markdown_content,
-            matched_citations,
+            entries_disambiguated: disambiguated_matched_citations,
             full_file_content,
         };
 
@@ -315,7 +340,7 @@ fn create_citations_set(citations: Vec<String>) -> Vec<String> {
 fn match_citations_to_bibliography(
     citations: Vec<String>,
     bibliography: &Vec<Entry>,
-) -> Result<Vec<Entry>, io::Error> {
+) -> Result<Vec<MatchedCitation>, io::Error> {
     let mut unmatched_citations = citations.clone();
     let mut matched_citations = Vec::new();
 
@@ -346,7 +371,10 @@ fn match_citations_to_bibliography(
 
             if is_match {
                 unmatched_citations.retain(|x| x != &citation);
-                matched_citations.push(entry.clone());
+                matched_citations.push(MatchedCitation {
+                    citation_raw: citation.clone(),
+                    entry: entry.clone(),
+                });
                 break; // Move to next citation once we find a match
             }
         }

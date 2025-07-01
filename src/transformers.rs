@@ -1,22 +1,26 @@
 use biblatex::{Entry, EntryType};
 use std::collections::HashMap;
 use utils::BiblatexUtils;
+use validators::{MatchedCitation, MatchedCitationDisambiguated};
 
 use crate::utils;
+use crate::validators;
 
 /// Transform a list of entries into a list of strings according to the Chicago bibliography style.
-pub fn entries_to_strings(entries: Vec<Entry>) -> Vec<String> {
-    let entries_clone = entries.clone();
+pub fn entries_to_strings(entries: Vec<MatchedCitationDisambiguated>) -> Vec<String> {
     let sorted_entries = sort_entries(entries);
     let mut strings_output: Vec<String> = Vec::new();
 
-    for entry in sorted_entries {
-        match entry.entry_type {
+    for matched_citation in sorted_entries {
+        match matched_citation.entry.entry_type {
             EntryType::Book => {
-                strings_output.push(transform_book_entry(&entry, entries_clone.clone()));
+                strings_output.push(transform_book_entry(&matched_citation));
             }
-            EntryType::Article => strings_output.push(transform_article_entry(&entry)),
-            _ => println!("Entry type not supported: {:?}", entry.entry_type),
+            EntryType::Article => strings_output.push(transform_article_entry(&matched_citation)),
+            _ => println!(
+                "Entry type not supported: {:?}",
+                &matched_citation.entry.entry_type
+            ),
         }
     }
 
@@ -24,19 +28,17 @@ pub fn entries_to_strings(entries: Vec<Entry>) -> Vec<String> {
 }
 
 /// Transform a book entry into a string according to the Chicago bibliography style.
-fn transform_book_entry(entry: &Entry, entries: Vec<Entry>) -> String {
+fn transform_book_entry(matched_citation: &MatchedCitationDisambiguated) -> String {
     let mut book_string = String::new();
 
-    let author = entry.author().unwrap();
-    let title = extract_title(entry);
-    let publisher = extract_publisher(entry);
-    let address = extract_address(entry);
-    let year = extract_date_with_context(entry, entries);
-    let translators = entry.translator().unwrap_or(Vec::new());
-    let doi = entry.doi().unwrap_or("".to_string());
+    let author = matched_citation.citation_author_date_disambiguated.clone();
+    let title = extract_title(&matched_citation.entry);
+    let publisher = extract_publisher(&matched_citation.entry);
+    let address = extract_address(&matched_citation.entry);
+    let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
+    let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
-    add_authors(author, &mut book_string);
-    add_year(year, &mut book_string);
+    add_authors_and_date(author, &mut book_string);
     add_book_title(title, &mut book_string);
     add_translators(translators, &mut book_string);
     add_address_and_publisher(address, publisher, &mut book_string);
@@ -46,22 +48,21 @@ fn transform_book_entry(entry: &Entry, entries: Vec<Entry>) -> String {
 }
 
 /// Transform an article entry into a string according to the Chicago bibliography style.
-fn transform_article_entry(entry: &Entry) -> String {
+fn transform_article_entry(matched_citation: &MatchedCitationDisambiguated) -> String {
     let mut article_string = String::new();
 
-    let author = entry.author().unwrap();
-    let title = extract_title(entry);
-    let journal = extract_journal(entry);
-    let volume = extract_volume(entry);
-    let number = extract_number(entry);
-    let pages = extract_pages(entry);
-    let year = extract_date(entry);
-    let translators = entry.translator().unwrap_or(Vec::new());
-    let doi = entry.doi().unwrap_or("".to_string());
+    let author = matched_citation.citation_author_date_disambiguated.clone();
+    let title = extract_title(&matched_citation.entry);
+    let journal = extract_journal(&matched_citation.entry);
+    let volume = extract_volume(&matched_citation.entry);
+    let number = extract_number(&matched_citation.entry);
+    let pages = extract_pages(&matched_citation.entry);
+    let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
+    let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
-    add_authors(author, &mut article_string);
+    add_authors_and_date(author, &mut article_string);
     add_article_title(title, &mut article_string);
-    add_journal_volume_number_year_pages(journal, volume, number, year, pages, &mut article_string);
+    add_journal_volume_number_pages(journal, volume, number, pages, &mut article_string);
     add_translators(translators, &mut article_string);
     add_doi(doi, &mut article_string);
 
@@ -94,24 +95,26 @@ fn generate_contributors(
     contributors_str
 }
 
-/// Add authors to the target string. Handles the case when there are multiple authors.
-fn add_authors(author: Vec<biblatex::Person>, bib_html: &mut String) {
+/// Add authors and date as is.
+fn add_authors_and_date(author_and_date: String, bib_html: &mut String) {
+    bib_html.push_str(&format!("{}", author_and_date));
+}
+
+///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
+fn format_authors(author: Vec<biblatex::Person>) -> String {
     if author.len() > 2 {
-        bib_html.push_str(&format!(
-            "{}, {} et al. ",
-            author[0].name, author[0].given_name
-        ));
+        return format!("{}, {} et al. ", author[0].name, author[0].given_name);
     } else if author.len() == 2 {
         // In Chicago style, when listing multiple authors in a bibliography entry,
         // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent
         // authors' names are written in standard order (i.e., "First Last").
         // This rule helps differentiate the primary author from co-authors.
-        bib_html.push_str(&format!(
+        return format!(
             "{}, {} and {} {}. ",
             author[0].name, author[0].given_name, author[1].given_name, author[1].name
-        ));
+        );
     } else {
-        bib_html.push_str(&format!("{}, {}. ", author[0].name, author[0].given_name));
+        return format!("{}, {}. ", author[0].name, author[0].given_name);
     }
 }
 
@@ -130,11 +133,6 @@ fn add_doi(doi: String, target_string: &mut String) {
     }
 }
 
-/// Add year to the target string.
-fn add_year(year: String, target_string: &mut String) {
-    target_string.push_str(&format!("{}. ", year));
-}
-
 /// Add book title to the target string. Mainly used for books.
 fn add_book_title(title: String, target_string: &mut String) {
     target_string.push_str(&format!("_{}_. ", title));
@@ -151,26 +149,25 @@ fn add_address_and_publisher(address: String, publisher: String, target_string: 
 }
 
 /// Add journal, volume, number, year, and pages to the target string. Mainly used for articles.
-fn add_journal_volume_number_year_pages(
+fn add_journal_volume_number_pages(
     journal: String,
     volume: i64,
     number: String,
-    year: i32,
     pages: String,
     target_string: &mut String,
 ) {
     target_string.push_str(&format!(
-        "_{}_ {}, no. {} ({}): {}. ",
-        journal, volume, number, year, pages
+        "_{}_ {} ({}): {}. ",
+        journal, volume, number, pages
     ));
 }
 
 /// Sort entries by author's last name.
-fn sort_entries(entries: Vec<Entry>) -> Vec<Entry> {
+fn sort_entries(entries: Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitationDisambiguated> {
     let mut sorted_entries = entries.clone();
     sorted_entries.sort_by(|a, b| {
-        let a_authors = a.author().unwrap_or_default();
-        let b_authors = b.author().unwrap_or_default();
+        let a_authors = a.entry.author().unwrap_or_default();
+        let b_authors = b.entry.author().unwrap_or_default();
 
         let a_last_name = a_authors
             .first()
@@ -242,68 +239,89 @@ fn extract_pages(entry: &Entry) -> String {
     pages
 }
 
-/// Extracts year with disambiguation letter if needed
-/// Returns the year as a string with letter suffix (e.g., "1991a", "1991b") for disambiguation
-fn extract_date_with_disambiguation(entries: Vec<Entry>) -> HashMap<String, String> {
-    let mut year_map = HashMap::new();
-    let mut author_year_counts: HashMap<String, Vec<String>> = HashMap::new();
+/// Transform MatchedCitation vector into MatchedCitationDisambiguated vector
+/// This handles all disambiguation logic in one place
+pub fn disambiguate_matched_citations(
+    citations: Vec<MatchedCitation>,
+) -> Vec<MatchedCitationDisambiguated> {
+    // Group citations by author-year for disambiguation analysis
+    let mut author_year_groups: HashMap<String, Vec<&MatchedCitation>> = HashMap::new();
 
-    // First pass: group entries by author-year combination
-    for entry in &entries {
-        let author = entry.author().unwrap();
+    for citation in &citations {
+        let author = citation.entry.author().unwrap();
         let author_last_name = author[0].name.clone();
 
-        let date = entry.date().unwrap();
-        let year = BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap();
+        let date = citation.entry.date().unwrap();
+        let year =
+            BiblatexUtils::extract_year_from_date(&date, citation.entry.key.clone()).unwrap();
 
         let author_year_key = format!("{}-{}", author_last_name, year);
-        let entry_key = entry.key.clone();
-
-        author_year_counts
+        author_year_groups
             .entry(author_year_key)
             .or_insert_with(Vec::new)
-            .push(entry_key);
+            .push(citation);
     }
 
-    // Second pass: assign disambiguation letters
-    for entry in &entries {
+    // Create disambiguation mapping
+    let mut citation_to_disambiguated: HashMap<String, String> = HashMap::new();
+
+    for (_author_year_key, group_citations) in author_year_groups {
+        if group_citations.len() > 1 {
+            // Need disambiguation - sort by entry key for consistent ordering
+            let mut sorted_citations = group_citations;
+            sorted_citations.sort_by(|a, b| a.entry.key.cmp(&b.entry.key));
+
+            for (index, citation) in sorted_citations.iter().enumerate() {
+                let letter = char::from(b'a' + index as u8);
+                let disambiguated = create_disambiguated_citation(letter, &citation.entry);
+                citation_to_disambiguated.insert(citation.citation_raw.clone(), disambiguated);
+            }
+        } else {
+            // No disambiguation needed - convert to standard format
+            let citation = group_citations[0];
+            let standard = create_standard_citation(&citation.citation_raw, &citation.entry);
+            citation_to_disambiguated.insert(citation.citation_raw.clone(), standard);
+        }
+    }
+
+    // Transform all citations using the disambiguation map
+    citations
+        .into_iter()
+        .map(|matched_citation| {
+            let disambiguated = citation_to_disambiguated
+                .get(&matched_citation.citation_raw)
+                .cloned()
+                .unwrap_or_else(|| matched_citation.citation_raw.clone()); // Fallback
+
+            MatchedCitationDisambiguated {
+                citation_raw: matched_citation.citation_raw,
+                citation_author_date_disambiguated: disambiguated,
+                entry: matched_citation.entry,
+            }
+        })
+        .collect()
+}
+
+/// Create disambiguated citation with letter (e.g., "@hegel2020logic, 123" -> "Hegel 2020a")
+fn create_disambiguated_citation(letter: char, entry: &Entry) -> String {
+    let author = format_authors(entry.author().unwrap());
+    let year = extract_date(entry);
+    format!("{} {}{}", author, year, letter)
+}
+
+/// Create standard citation format (no disambiguation needed)
+fn create_standard_citation(raw_citation: &str, entry: &Entry) -> String {
+    if raw_citation.starts_with('@') {
+        // Convert @key to Author Year format
         let author = entry.author().unwrap();
         let author_last_name = author[0].name.clone();
 
         let date = entry.date().unwrap();
         let year = BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap();
 
-        let author_year_key = format!("{}-{}", author_last_name, year);
-        let entry_key = entry.key.clone();
-
-        let entries_for_author_year = author_year_counts.get(&author_year_key).unwrap();
-
-        let disambiguated_year = if entries_for_author_year.len() > 1 {
-            // Multiple entries for same author-year, add letter
-            let position = entries_for_author_year
-                .iter()
-                .position(|k| k == &entry_key)
-                .unwrap();
-            let letter = char::from(b'a' + position as u8);
-            format!("{}{}", year, letter)
-        } else {
-            // Only one entry for this author-year, no disambiguation needed
-            year.to_string()
-        };
-
-        year_map.insert(entry_key, disambiguated_year);
+        format!("{} {}", author_last_name, year)
+    } else {
+        // Already in standard format, return as-is
+        raw_citation.to_string()
     }
-
-    year_map
-}
-
-/// Updated extract_date function that uses disambiguation
-fn extract_date_with_context(entry: &Entry, entries: Vec<Entry>) -> String {
-    let disambiguation_map = extract_date_with_disambiguation(entries);
-    let key = entry.key.clone();
-
-    disambiguation_map
-        .get(&key)
-        .unwrap_or(&"Unknown".to_string())
-        .clone()
 }
