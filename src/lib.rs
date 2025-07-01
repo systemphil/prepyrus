@@ -101,6 +101,7 @@ Apache-2.0
 */
 
 pub mod cli;
+pub mod errors;
 pub mod inserters;
 pub mod transformers;
 pub mod utils;

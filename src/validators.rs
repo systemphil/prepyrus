@@ -1,7 +1,9 @@
+use crate::errors::CitationError;
 use crate::{transformers, BiblatexUtils};
 use biblatex::Entry;
 use regex::Regex;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufReader, Error, Read};
 
@@ -348,7 +350,7 @@ fn create_citations_set(citations: Vec<String>) -> Vec<String> {
 fn match_citations_to_bibliography(
     citations: Vec<String>,
     bibliography: &Vec<Entry>,
-) -> Result<Vec<MatchedCitation>, io::Error> {
+) -> Result<Vec<MatchedCitation>, CitationError> {
     let mut unmatched_citations = citations.clone();
     let mut matched_citations = Vec::new();
 
@@ -383,22 +385,56 @@ fn match_citations_to_bibliography(
                     citation_raw: citation.clone(),
                     entry: entry.clone(),
                 });
-                break; // Move to next citation once we find a match
             }
         }
     }
 
     if unmatched_citations.len() > 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "Citations not found in the library: ({:?})",
-                unmatched_citations
-            ),
-        ));
+        return Err(CitationError::UnmatchedCitations(unmatched_citations));
     }
 
+    check_for_ambiguous_citations(&matched_citations)?;
+
     Ok(matched_citations)
+}
+
+fn check_for_ambiguous_citations(
+    matched_citations: &Vec<MatchedCitation>,
+) -> Result<(), CitationError> {
+    let mut citation_map: HashMap<String, Vec<MatchedCitation>> = HashMap::new();
+
+    for matched in matched_citations {
+        citation_map
+            .entry(matched.citation_raw.clone())
+            .or_default()
+            .push(matched.clone());
+    }
+
+    let mut ambiguous_citations = Vec::new();
+
+    for (citation_raw, matches) in citation_map.iter() {
+        if matches.len() > 1 {
+            ambiguous_citations.push((citation_raw.clone(), matches));
+        }
+    }
+
+    if !ambiguous_citations.is_empty() {
+        let mut error_msg = String::from("Ambiguous citations found:\n");
+        for (citation, entries) in ambiguous_citations {
+            let entry_keys: Vec<String> = entries
+                .iter()
+                .map(|m| format!("key: {}", m.entry.key))
+                .collect();
+            error_msg.push_str(&format!(
+                "- '{}' might refer to multiple entries: {}\n",
+                citation,
+                entry_keys.join(", ")
+            ));
+        }
+        return Err(CitationError::AmbiguousMatch(error_msg));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
