@@ -9,10 +9,10 @@ use std::{
 
 use crate::cli::{Cli, Mode};
 
-/// Utility functions for working with BibTeX files.
+/// Utility functions for prepyrus for working with BibTeX files.
 pub struct BiblatexUtils;
 
-/// Utility functions for working with files and directories.
+/// Utility functions for prepyrus working with files and directories.
 pub struct Utils;
 
 #[derive(Debug)]

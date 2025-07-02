@@ -1,7 +1,9 @@
-use crate::BiblatexUtils;
+use crate::errors::CitationError;
+use crate::{transformers, BiblatexUtils};
 use biblatex::Entry;
 use regex::Regex;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufReader, Error, Read};
 
@@ -31,32 +33,71 @@ pub struct MetadataUnverified {
     pub contributors: Option<String>,
 }
 
+/// Contents of an article file as well as path and matched entries.
 #[derive(Debug, Clone)]
 pub struct ArticleFileData {
     /// Path to the file whose contents were extracted.
     pub path: String,
+
     /// Metadata enclosed at the top of the file.
     pub metadata: Metadata,
+
     /// Contents of the file.
     pub markdown_content: String,
-    /// A set of citations that exist in the source `.bib` file.
-    pub matched_citations: Vec<Entry>,
+
+    /// A set of citations that exist in the source `.bib` file with disambiguated author date and date.
+    pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
+
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
 }
 
+/// Contents of an article file as well as path and matched entries, but where some fields are unverified.
 #[derive(Debug, Clone)]
 pub struct ArticleFileDataUnverified {
     /// Path to the file whose contents were extracted.
     pub path: String,
+
     /// Metadata (unverified) enclosed at the top of the file.
     pub metadata: MetadataUnverified,
+
     /// Contents of the file.
     pub markdown_content: String,
-    /// A set of citations that exist in the source `.bib` file.
-    pub matched_citations: Vec<Entry>,
+
+    /// A set of citations that exist in the source `.bib` file with disambiguated author date and date.
+    pub entries_disambiguated: Vec<MatchedCitationDisambiguated>,
+
     /// Original contents of the file, includes metadata.
     pub full_file_content: String,
+}
+
+/// Citation from an article that has found a match in the source bibliography.
+#[derive(Debug, Clone)]
+pub struct MatchedCitation {
+    /// Original citation. E.g., "@hegel2020logic, 123" or "Hegel 2020, 123"
+    pub citation_raw: String,
+
+    /// bilblatex bibliographical Entry
+    pub entry: Entry,
+}
+
+/// Citation from an article that has found a match in the source bibliography that also
+/// includes disambiguated author date `String` and year `String`.
+#[derive(Debug, Clone)]
+pub struct MatchedCitationDisambiguated {
+    /// Original citation. E.g., "@hegel2020logic, 123" or "Hegel 2020, 123"
+    pub citation_raw: String,
+
+    /// Context aware citation that should include disambiguitation if needed.
+    /// E.g. "Hegel 2020a" "Hegel 2020b"
+    pub citation_author_date_disambiguated: String,
+
+    /// Context aware year that should include disambiguitation if needed.
+    /// E.g. "2020a" "2020b"
+    pub year_disambiguated: String,
+
+    /// bilblatex bibliographical Entry
+    pub entry: Entry,
 }
 
 impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
@@ -82,7 +123,7 @@ impl TryFrom<ArticleFileDataUnverified> for ArticleFileData {
                 contributors: article.metadata.contributors,
             },
             markdown_content: article.markdown_content,
-            matched_citations: article.matched_citations,
+            entries_disambiguated: article.entries_disambiguated,
             full_file_content: article.full_file_content,
         })
     }
@@ -140,11 +181,15 @@ pub fn verify_mdx_files(
                 std::process::exit(1);
             }
         };
+
+        let disambiguated_matched_citations =
+            transformers::disambiguate_matched_citations(matched_citations);
+
         let article = ArticleFileDataUnverified {
             path: mdx_path.clone(),
             metadata,
             markdown_content,
-            matched_citations,
+            entries_disambiguated: disambiguated_matched_citations,
             full_file_content,
         };
 
@@ -226,20 +271,24 @@ fn check_parentheses_balance(markdown: &String) -> bool {
 fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
     //      Regex explanation
     //
-    //      \(      Match an opening parenthesis
-    //     (see\s)? Optionally match the word "see" followed by a whitespace
-    //      ([A-Z]  Match a capital letter
-    //      [^()]*? Match any character except opening and closing parenthesis
-    //      \d+     Match one or more digits
-    //      (?:     Start a non-capturing group
-    //      ,       Match a comma
-    //      [^)]*   Match any character except closing parenthesis
-    //      )?      End the non-capturing group and make it optional
-    //      \)      Match a closing parenthesis
+    //      \(                          Match an opening parenthesis
+    //      (see\s)?                    Optionally match the word "see" followed by a whitespace
+    //      (                           Start capturing group for citation content
+    //      @[^(),\s]+(?:,[^)]*)?       Match @ key with optional page numbers
+    //      |                           OR
+    //      [A-Z][^()]*?\d+(?:,[^)]*)?  Match traditional author format with optional page numbers
+    //      )                           End capturing group
+    //      \)                          Match a closing parenthesis
     //
-    // The regex will match citations in the format (Author_last_name 2021) or (Author_last_name 2021, 123)
+    // The regex will match citations in these formats:
+    // - (@hegel1991logic, 123)
+    // - (see @hegel1991logic, 123)
+    // - (Hegel 2022, 123)
+    // - (see Hegel 2022, 123)
     //
-    let citation_regex = Regex::new(r"\((see\s)?([A-Z][^()]*?\d+(?:,[^)]*)?)\)").unwrap();
+    let citation_regex =
+        Regex::new(r"\((see\s)?(@[^(),\s]+(?:,[^)]*)?|[A-Z][^()]*?\d+(?:,[^)]*)?)\)").unwrap();
+
     let mut citations = Vec::new();
 
     for line in markdown.lines() {
@@ -263,8 +312,13 @@ fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
 /// Verifies the format of the citations extracted from the markdown.
 /// The citations are expected to be in the format (Author_last_name 2021)
 /// or (Author_last_name 2021, 123)
+/// Citations starting with a @key will be ignored.
 fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
     for citation in citations {
+        if citation.starts_with("@") {
+            continue;
+        }
+
         let citation_split = citation.splitn(2, ',').collect::<Vec<&str>>();
         let first_part = citation_split[0].trim();
         let has_year = first_part.split_whitespace().any(|word| {
@@ -274,6 +328,7 @@ fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
                 false
             }
         });
+
         if !has_year {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -302,42 +357,95 @@ fn create_citations_set(citations: Vec<String>) -> Vec<String> {
 
 /// Matches citations to the inputted bibliography
 /// the matched list is returned with full bibliographical details.
-/// If any citation is not found in the bibliography, an error is returned.
+/// Returns error for any unmatched or ambiguous citations.
 fn match_citations_to_bibliography(
     citations: Vec<String>,
     bibliography: &Vec<Entry>,
-) -> Result<Vec<Entry>, io::Error> {
+) -> Result<Vec<MatchedCitation>, CitationError> {
     let mut unmatched_citations = citations.clone();
     let mut matched_citations = Vec::new();
 
     for citation in citations {
         for entry in bibliography {
-            let author = entry.author().unwrap();
-            let author_last_name = author[0].name.clone();
+            let mut is_match = false;
 
-            let date: biblatex::PermissiveType<biblatex::Date> = entry.date().unwrap();
-            let year = BiblatexUtils::extract_year_from_date(&date, citation.clone()).unwrap();
+            if citation.starts_with('@') {
+                let citation_key = citation.split(',').next().unwrap().trim(); // Extract the key part (everything before comma if present)
+                let citation_key = &citation_key[1..]; // Remove @ prefix
 
-            let author_year = format!("{} {:?}", author_last_name, year);
+                if entry.key == citation_key {
+                    is_match = true;
+                }
+            } else {
+                let author = entry.author().unwrap();
+                let author_last_name = author[0].name.clone();
 
-            if citation == author_year {
+                let date: biblatex::PermissiveType<biblatex::Date> = entry.date().unwrap();
+                let year = BiblatexUtils::extract_year_from_date(&date, citation.clone()).unwrap();
+
+                let author_year = format!("{} {:?}", author_last_name, year);
+
+                if citation == author_year {
+                    is_match = true;
+                }
+            }
+
+            if is_match {
                 unmatched_citations.retain(|x| x != &citation);
-                matched_citations.push(entry.clone());
+                matched_citations.push(MatchedCitation {
+                    citation_raw: citation.clone(),
+                    entry: entry.clone(),
+                });
             }
         }
     }
 
     if unmatched_citations.len() > 0 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            format!(
-                "Citations not found in the library: ({:?})",
-                unmatched_citations
-            ),
-        ));
+        return Err(CitationError::UnmatchedCitations(unmatched_citations));
     }
 
+    check_for_ambiguous_citations(&matched_citations)?;
+
     Ok(matched_citations)
+}
+
+fn check_for_ambiguous_citations(
+    matched_citations: &Vec<MatchedCitation>,
+) -> Result<(), CitationError> {
+    let mut citation_map: HashMap<String, Vec<MatchedCitation>> = HashMap::new();
+
+    for matched in matched_citations {
+        citation_map
+            .entry(matched.citation_raw.clone())
+            .or_default()
+            .push(matched.clone());
+    }
+
+    let mut ambiguous_citations = Vec::new();
+
+    for (citation_raw, matches) in citation_map.iter() {
+        if matches.len() > 1 {
+            ambiguous_citations.push((citation_raw.clone(), matches));
+        }
+    }
+
+    if !ambiguous_citations.is_empty() {
+        let mut error_msg = String::from("");
+        for (citation, entries) in ambiguous_citations {
+            let entry_keys: Vec<String> = entries
+                .iter()
+                .map(|m| format!("key: {}", m.entry.key))
+                .collect();
+            error_msg.push_str(&format!(
+                "- '{}' might refer to multiple entries: {}\n",
+                citation,
+                entry_keys.join(", ")
+            ));
+        }
+        return Err(CitationError::AmbiguousMatch(error_msg));
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -371,12 +479,21 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Hegel 2021"]);
     }
+
+    #[test]
+    fn single_citation_key() {
+        let markdown = String::from("This is a citation (@hegel1991logic) in the text.");
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["@hegel1991logic"]);
+    }
+
     #[test]
     fn single_citation_prefixed_see() {
         let markdown = String::from("This is a citation (see Hegel 2021) in the text.");
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Hegel 2021"]);
     }
+
     #[test]
     fn multiple_citations() {
         let markdown =
@@ -384,6 +501,16 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
     }
+
+    #[test]
+    fn multiple_citations_with_key() {
+        let markdown = String::from(
+            "This is a citation (@spinoza2021logic) and another one (@kant2020logic, 123).",
+        );
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["@spinoza2021logic", "@kant2020logic, 123"]);
+    }
+
     #[test]
     fn multiple_citations_prefixed_see() {
         let markdown = String::from(
@@ -392,18 +519,30 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Spinoza 2021", "Kant 2020, 123"]);
     }
+
+    #[test]
+    fn multiple_citations_mixed_prefixed_see() {
+        let markdown = String::from(
+            "This is a citation (see Spinoza 2021) and another one (see @kant2020logic, 123).",
+        );
+        let citations = extract_citations_from_markdown(&markdown);
+        assert_eq!(citations, vec!["Spinoza 2021", "@kant2020logic, 123"]);
+    }
+
     #[test]
     fn no_citation() {
         let markdown = String::from("This text has no citations.");
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, Vec::<String>::new());
     }
+
     #[test]
     fn citation_with_additional_text() {
         let markdown = String::from("This citation (Plato 2019) has additional text.");
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Plato 2019"]);
     }
+
     #[test]
     fn multiple_lines() {
         let markdown = String::from(
@@ -414,18 +553,21 @@ mod tests_citation_extraction {
         let citations = extract_citations_from_markdown(&markdown);
         assert_eq!(citations, vec!["Aristotle 2020", "Hume 2018"]);
     }
+
     #[test]
     fn incomplete_citation_opening_parenthesis_only() {
         let markdown = String::from("This is an incomplete citation (Spinoza 2021.");
         let valid_citations = extract_citations_from_markdown(&markdown);
         assert!(valid_citations.is_empty());
     }
+
     #[test]
     fn incomplete_citation_closing_parenthesis_only() {
         let markdown = String::from("This is an incomplete citation Descartes 2021).");
         let valid_citations = extract_citations_from_markdown(&markdown);
         assert!(valid_citations.is_empty());
     }
+
     #[test]
     fn mixed_valid_and_invalid_citations() {
         let markdown =
@@ -444,11 +586,13 @@ mod tests_validate_citations {
         let citations = vec!["Hegel 2021".to_string(), "Kant 2020, 123".to_string()];
         assert!(verify_citations_format(&citations).is_ok());
     }
+
     #[test]
     fn missing_year() {
         let citations = vec!["Hegel".to_string(), "Kant 2020, 123".to_string()];
         assert!(verify_citations_format(&citations).is_err());
     }
+
     #[test]
     fn invalid_citation_extra_comma() {
         let citations = vec![
@@ -458,6 +602,7 @@ mod tests_validate_citations {
         ];
         assert!(verify_citations_format(&citations).is_err());
     }
+
     #[test]
     fn valid_citations_set() {
         let citations = vec![
@@ -470,27 +615,61 @@ mod tests_validate_citations {
         let citations_set = create_citations_set(citations);
         assert_eq!(citations_set, vec!["Hegel 2021", "Kant 2020"]);
     }
+
     #[test]
     fn empty_citations_set() {
         let citations = Vec::<String>::new();
         let citations_set = create_citations_set(citations);
         assert!(citations_set.is_empty());
     }
+
     #[test]
     fn invalid_citations_set() {
         let citations = vec!["Hegel 2021".to_string(), "Kant, 2020, 123".to_string()];
         let citations_set = create_citations_set(citations);
         assert_eq!(citations_set, vec!["Hegel 2021", "Kant"]);
     }
-    // TODO what happened here? investigate
-    // #[test]
-    // fn test_match_citations_to_bibliography() {
-    //     let bibliography = vec![
-    //         Entry::new("book", "Hegel 2021"),
-    //         Entry::new("book", "Kant 2020"),
-    //     ];
-    //     let citations = vec!["Hegel 2021".to_string(), "Kant 2020".to_string()];
-    //     let matched_citations = match_citations_to_bibliography(citations, &bibliography).unwrap();
-    //     assert_eq!(matched_citations, bibliography);
-    // }
+
+    #[test]
+    fn match_three_citations_to_bibliography() {
+        let bibliography =
+            BiblatexUtils::retrieve_bibliography_entries("tests/mocks/test.bib").unwrap();
+        let citations = vec![
+            "Hegel 2010".to_string(),
+            "Hegel 2018".to_string(),
+            "Burbidge 1981".to_string(),
+        ];
+        let matched_citations = match_citations_to_bibliography(citations, &bibliography).unwrap();
+        assert_eq!(matched_citations.len(), 3);
+    }
+
+    #[test]
+    fn match_four_mixed_citations_to_bibliography() {
+        let bibliography =
+            BiblatexUtils::retrieve_bibliography_entries("tests/mocks/test.bib").unwrap();
+        let citations = vec![
+            "Hegel 2010".to_string(),
+            "Hegel 2018".to_string(),
+            "@doe2021a".to_string(),
+            "@doe2021e".to_string(),
+        ];
+        let matched_citations = match_citations_to_bibliography(citations, &bibliography).unwrap();
+        assert_eq!(matched_citations.len(), 4);
+    }
+
+    #[test]
+    fn error_on_ambiguous_citations() {
+        let bibliography =
+            BiblatexUtils::retrieve_bibliography_entries("tests/mocks/test.bib").unwrap();
+        let citations = vec!["Hegel 1991".to_string()];
+        let result = match_citations_to_bibliography(citations, &bibliography);
+
+        match result {
+            Err(CitationError::AmbiguousMatch(msg)) => {
+                assert!(msg.contains("'Hegel 1991' might refer to multiple entries: key: hegel1991logic, key: hegel1991encyclopaedialogic"));
+            }
+            Err(e) => panic!("Expected AmbiguousMatch, but got different error: {:?}", e),
+            Ok(_) => panic!("Expected error, but got Ok"),
+        }
+    }
 }

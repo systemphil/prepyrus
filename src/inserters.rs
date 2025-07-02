@@ -1,4 +1,3 @@
-use biblatex::Entry;
 use itertools::Itertools;
 use regex::Regex;
 use std::collections::BTreeSet;
@@ -6,6 +5,8 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use validators::{ArticleFileData, Metadata};
 
+use crate::transformers::transform_keys_to_citations;
+use crate::validators::MatchedCitationDisambiguated;
 use crate::{transformers, validators};
 
 struct InserterOutcome {
@@ -114,7 +115,7 @@ pub fn generate_index_to_file(
 
 fn process_mdx_file(article_file_data: ArticleFileData, inserter_outcome: &mut InserterOutcome) {
     let mut mdx_payload = String::new();
-    let mdx_bibliography = generate_mdx_bibliography(article_file_data.matched_citations);
+    let mdx_bibliography = generate_mdx_bibliography(&article_file_data.entries_disambiguated);
 
     let mdx_authors = generate_mdx_authors(&article_file_data.metadata);
     let mdx_notes_heading = generate_notes_heading(&article_file_data.markdown_content);
@@ -136,8 +137,9 @@ fn process_mdx_file(article_file_data: ArticleFileData, inserter_outcome: &mut I
         return;
     }
 
-    let updated_markdown_content =
-        format!("{}\n{}", article_file_data.full_file_content, mdx_payload);
+    let full_file_content_disambiguated = transform_keys_to_citations(&article_file_data);
+
+    let updated_markdown_content = format!("{}\n{}", full_file_content_disambiguated, mdx_payload);
 
     match write_html_to_mdx_file(&article_file_data.path, &updated_markdown_content) {
         Ok(_) => {
@@ -165,7 +167,7 @@ fn append_to_file(path: &str, content: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-fn generate_mdx_bibliography(entries: Vec<Entry>) -> String {
+fn generate_mdx_bibliography(entries: &Vec<MatchedCitationDisambiguated>) -> String {
     let mut bib_html = String::new();
 
     if entries.is_empty() {
