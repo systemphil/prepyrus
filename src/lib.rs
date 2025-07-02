@@ -10,7 +10,7 @@ Add the crate to your `Cargo.toml` and use it as shown below:
 
 ```toml
 [dependencies]
-prepyrus = "0.2"
+prepyrus = "<latest_version>"
 ```
 
 Main API interface is the `Prepyrus` impl. Example usage:
@@ -67,9 +67,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Description
 
-The tool is designed to work with MDX files that contain citations in Chicago author-date style. Examples:
+The tool is designed to work with MDX files that contain citations in Chicago author-date style or by BibTex key. Examples:
 
 > "...nowhere on heaven or on earth is there anything which does not contain both being and nothing in itself" (Hegel 2010, 61).
+
+> "The equilibrium in which coming-to-be and ceasing-to-be are poised is in the first place becoming itself" (@hegel2010logic, 81).
+
+> "Existence proceeds from becoming" (see Hegel 2010, 61).
 
 The tool parses and verifies the citations in the MDX files against a
 bibliography file in BibTeX format (using Biblatex).
@@ -77,6 +81,35 @@ If the citations are valid, the tool processes the MDX files
 by adding a bibliography section at the end of the file.
 It also adds author, editor, and contributor from the MDX file metadata if available.
 Finally, it also adds a notes heading at the end if footnotes are present in the file.
+
+If BibTex keys are used, these will be replaced by disambiguated citations during `process` mode.
+
+## Additional Features
+
+**Alphabetical Index Generation**
+
+When running in process mode with the `--generate-index-file <TARET_FILE>` option, Prepyrus now:
+
+- Extracts all `indexTitles` from .mdx files.
+- Sorts them alphabetically by title.
+- Groups them under ## headings by first letter (e.g., ## A, ## B, etc).
+- Writes a neatly structured index to the specified .mdx file.
+
+You can rewrite parts of generated index links using:
+
+```
+--link-prefix-rewrite "/content=/articles"
+```
+
+**Handling Ambiguities**
+
+Version `0.4` introduces citation ambiguity handling. When an author has multiple
+works in the same year, such as (Hegel 1991) which might refer to the Miller
+translation of the Science of Logic or the Encyclopaedia Logic, the program will
+return an error with disambiguation suggestions by key. To solve ambiguous citations,
+one must make use of BibTex keys prefixed with @ in the citation, e.g. `(@hegel1991logic)`.
+
+During `process` mode, keys will be converted to disambiguated citations in Chicago author-date style.
 
 ## Limitations
 
