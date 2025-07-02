@@ -34,7 +34,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     // Example Command Line Inputs
     let cli = Cli {
         bib_file: "tests/mocks/test.bib".to_string(),
-        target_path: "tests/mocks/data".to_string(),
+        target_path: "tests/mocks/data-isolated".to_string(),
         mode: Mode::Verify,
         ignore_paths: Some(vec!["tests/mocks/data/development.mdx".into()]),
         generate_index_to_file: None,
