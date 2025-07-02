@@ -644,6 +644,20 @@ mod tests_validate_citations {
     }
 
     #[test]
+    fn match_four_mixed_citations_to_bibliography() {
+        let bibliography =
+            BiblatexUtils::retrieve_bibliography_entries("tests/mocks/test.bib").unwrap();
+        let citations = vec![
+            "Hegel 2010".to_string(),
+            "Hegel 2018".to_string(),
+            "@doe2021a".to_string(),
+            "@doe2021e".to_string(),
+        ];
+        let matched_citations = match_citations_to_bibliography(citations, &bibliography).unwrap();
+        assert_eq!(matched_citations.len(), 4);
+    }
+
+    #[test]
     fn error_on_ambiguous_citations() {
         let bibliography =
             BiblatexUtils::retrieve_bibliography_entries("tests/mocks/test.bib").unwrap();
