@@ -40,6 +40,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         generate_index_to_file: None,
         index_link_prefix_rewrite: None,
     };
+    // Normally one would use let cli = Prepyrus::parse_cli();
 
     let config = Prepyrus::build_config(cli, None)?;
     let all_entries = Prepyrus::get_all_bib_entries(&config.bib_file).unwrap();
