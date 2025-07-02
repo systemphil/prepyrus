@@ -97,7 +97,7 @@ When running in process mode with the `--generate-index-file <TARET_FILE>` optio
 
 You can rewrite parts of generated index links using:
 
-```
+```txt
 --link-prefix-rewrite "/content=/articles"
 ```
 
