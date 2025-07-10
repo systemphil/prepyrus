@@ -33,8 +33,8 @@ fn run_verify_with_directory() {
 
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Verify);
-    assert!(generate_index_file == None);
-    assert!(link_prefix_rewrite == None);
+    assert!(generate_index_file.is_none());
+    assert!(link_prefix_rewrite.is_none());
     assert!(articles_file_data.len() > 1);
     assert!(!articles_file_data.is_empty());
 }
@@ -68,8 +68,8 @@ fn run_verify_with_directory_with_ignored_paths_from_settings() {
 
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Verify);
-    assert!(generate_index_file == None);
-    assert!(link_prefix_rewrite == None);
+    assert!(generate_index_file.is_none());
+    assert!(link_prefix_rewrite.is_none());
     assert!(articles_file_data.len() > 1);
     assert!(!articles_file_data.is_empty());
 }
@@ -102,19 +102,18 @@ fn run_verify_with_directory_with_ignored_paths_from_cli_args() {
         let mdx_paths = Prepyrus::get_mdx_paths(&target_path, Some(settings.ignore_paths)).unwrap();
         let articles_file_data = Prepyrus::verify(mdx_paths, &all_entries).unwrap();
         assert!(mode == Mode::Verify);
-        assert!(generate_index_file == None);
-        assert!(link_prefix_rewrite == None);
+        assert!(generate_index_file.is_none());
+        assert!(link_prefix_rewrite.is_none());
         for ignored_path in ignored_paths {
             assert!(
-                articles_file_data
+                !articles_file_data
                     .iter()
-                    .find(|article| article.path == *ignored_path)
-                    .is_none(),
+                    .any(|article| article.path == *ignored_path),
                 "Article with the path '{}' found",
                 ignored_path
             );
         }
-        assert!(articles_file_data.len() >= 1);
+        assert!(!articles_file_data.is_empty());
         assert!(!articles_file_data.is_empty());
     }
 
@@ -154,8 +153,8 @@ fn run_verify_with_single_file() {
 
     println!("{:?}", articles_file_data);
     assert!(mode == Mode::Verify);
-    assert!(generate_index_file == None);
-    assert!(link_prefix_rewrite == None);
+    assert!(generate_index_file.is_none());
+    assert!(link_prefix_rewrite.is_none());
     assert!(articles_file_data.len() == 1);
     assert!(!articles_file_data.is_empty());
 }
