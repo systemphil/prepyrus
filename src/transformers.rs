@@ -64,7 +64,7 @@ pub fn disambiguate_matched_citations(
         let author_year_key = format!("{}-{}", author_last_name, year);
         author_year_groups
             .entry(author_year_key)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(citation);
     }
 
@@ -126,7 +126,7 @@ fn transform_book_entry(matched_citation: &MatchedCitationDisambiguated) -> Stri
     let title = extract_title(&matched_citation.entry);
     let publisher = extract_publisher(&matched_citation.entry);
     let address = extract_address(&matched_citation.entry);
-    let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
+    let translators = matched_citation.entry.translator().unwrap_or_default();
     let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
     add_authors(author, &mut book_string);
@@ -150,7 +150,7 @@ fn transform_article_entry(matched_citation: &MatchedCitationDisambiguated) -> S
     let volume = extract_volume(&matched_citation.entry);
     let number = extract_number(&matched_citation.entry);
     let pages = extract_pages(&matched_citation.entry);
-    let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
+    let translators = matched_citation.entry.translator().unwrap_or_default();
     let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
     add_authors(author, &mut article_string);
@@ -292,7 +292,7 @@ fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitat
         // Compare by year
         let a_year = &a.year_disambiguated;
         let b_year = &b.year_disambiguated;
-        let cmp_year = a_year.cmp(&b_year);
+        let cmp_year = a_year.cmp(b_year);
         if cmp_year != std::cmp::Ordering::Equal {
             return cmp_year;
         }
@@ -307,7 +307,7 @@ fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitat
 }
 
 /// Helper to generate a sortable author string
-fn author_key(authors: &Vec<Person>) -> String {
+fn author_key(authors: &[Person]) -> String {
     authors
         .first()
         .map(|p| p.name.clone().to_lowercase())
@@ -317,57 +317,49 @@ fn author_key(authors: &Vec<Person>) -> String {
 /// Title of the entry.
 fn extract_title(entry: &Entry) -> String {
     let title_spanned = entry.title().unwrap();
-    let title = BiblatexUtils::extract_spanned_chunk(title_spanned);
-    title
+    BiblatexUtils::extract_spanned_chunk(title_spanned)
 }
 
 /// Publisher of the entry.
 fn extract_publisher(entry: &Entry) -> String {
     let publisher_spanned = entry.publisher().unwrap();
-    let publisher = BiblatexUtils::extract_publisher(&publisher_spanned);
-    publisher
+    BiblatexUtils::extract_publisher(&publisher_spanned)
 }
 
 /// Address of the publisher.
 fn extract_address(entry: &Entry) -> String {
     let address_spanned = entry.address().unwrap();
-    let address = BiblatexUtils::extract_spanned_chunk(address_spanned);
-    address
+    BiblatexUtils::extract_spanned_chunk(address_spanned)
 }
 
 /// Year of entry.
 fn extract_date(entry: &Entry) -> i32 {
     let date = entry.date().unwrap();
-    let year = BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap();
-    year
+    BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap()
 }
 
 /// Name of the journal of the article.
 fn extract_journal(entry: &Entry) -> String {
     let journal_spanned = entry.journal().unwrap();
-    let journal = BiblatexUtils::extract_spanned_chunk(&journal_spanned);
-    journal
+    BiblatexUtils::extract_spanned_chunk(journal_spanned)
 }
 
 /// Volume of the journal.
 fn extract_volume(entry: &Entry) -> i64 {
     let volume_permissive = entry.volume().unwrap();
-    let volume = BiblatexUtils::extract_volume(&volume_permissive);
-    volume
+    BiblatexUtils::extract_volume(&volume_permissive)
 }
 
 /// Number of the journal.
 fn extract_number(entry: &Entry) -> String {
     let number_spanned = entry.number().unwrap();
-    let number = BiblatexUtils::extract_spanned_chunk(&number_spanned);
-    number
+    BiblatexUtils::extract_spanned_chunk(number_spanned)
 }
 
 /// Pages of the article.
 fn extract_pages(entry: &Entry) -> String {
     let pages_permissive = entry.pages().unwrap();
-    let pages = BiblatexUtils::extract_pages(&pages_permissive);
-    pages
+    BiblatexUtils::extract_pages(&pages_permissive)
 }
 
 /// Create disambiguated citation with letter (e.g., "@hegel2020logic, 123" -> "Hegel 2020a")
