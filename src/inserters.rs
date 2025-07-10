@@ -220,12 +220,10 @@ fn generate_notes_heading(markdown: &String) -> String {
 
     let footnote_regex = Regex::new(r"\[\^1\]").unwrap();
 
-    'outer: for line in markdown.lines() {
-        for _captures in footnote_regex.captures_iter(line) {
-            mdx_notes_heading.push_str("\n**Notes**");
-            break 'outer;
-        }
+    if markdown.lines().any(|line| footnote_regex.is_match(line)) {
+        mdx_notes_heading.push_str("\n**Notes**");
     }
+
     mdx_notes_heading
 }
 
