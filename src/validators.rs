@@ -141,7 +141,7 @@ pub fn verify_mdx_files(
     let mut article_count = 0;
     let mut all_articles: Vec<ArticleFileData> = Vec::new();
     for mdx_path in &mdx_paths {
-        let (metadata, markdown_content, full_file_content) = match read_mdx_file(&mdx_path) {
+        let (metadata, markdown_content, full_file_content) = match read_mdx_file(mdx_path) {
             Ok(data) => data,
             Err(err) => {
                 if err.kind() == io::ErrorKind::InvalidData {
@@ -171,7 +171,7 @@ pub fn verify_mdx_files(
             }
         };
         let citations_set = create_citations_set(citations);
-        let matched_citations = match match_citations_to_bibliography(citations_set, &all_entries) {
+        let matched_citations = match match_citations_to_bibliography(citations_set, all_entries) {
             Ok(data) => data,
             Err(err) => {
                 eprintln!(
@@ -243,7 +243,7 @@ fn read_mdx_file(path: &str) -> io::Result<(MetadataUnverified, String, String)>
 
 /// Checks if the parentheses in a markdown string are balanced.
 /// No odd number of parentheses is allowed.
-fn check_parentheses_balance(markdown: &String) -> bool {
+fn check_parentheses_balance(markdown: &str) -> bool {
     let mut balance = 0;
 
     for ch in markdown.chars() {
@@ -268,7 +268,7 @@ fn check_parentheses_balance(markdown: &String) -> bool {
 /// ### Example
 ///
 /// (Hegel 2021) or (Hegel 2021, 123)
-fn extract_citations_from_markdown(markdown: &String) -> Vec<String> {
+fn extract_citations_from_markdown(markdown: &str) -> Vec<String> {
     //      Regex explanation
     //
     //      \(                          Match an opening parenthesis
@@ -323,7 +323,7 @@ fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
         let first_part = citation_split[0].trim();
         let has_year = first_part.split_whitespace().any(|word| {
             if let Ok(num) = word.parse::<u32>() {
-                num >= 1000 && num <= 9999
+                (1000..=9999).contains(&num)
             } else {
                 false
             }
@@ -400,7 +400,7 @@ fn match_citations_to_bibliography(
         }
     }
 
-    if unmatched_citations.len() > 0 {
+    if !unmatched_citations.is_empty() {
         return Err(CitationError::UnmatchedCitations(unmatched_citations));
     }
 
