@@ -181,7 +181,7 @@ fn generate_mdx_bibliography(entries: &Vec<MatchedCitationDisambiguated>) -> Str
     for entry in prepared_entries {
         bib_html.push_str("- ");
         bib_html.push_str(&entry);
-        bib_html.push_str("\n");
+        bib_html.push('\n');
     }
 
     bib_html.push_str("</div>\n");
@@ -198,24 +198,24 @@ fn generate_mdx_authors(metadata: &Metadata) -> String {
 
     if let Some(authors) = &metadata.authors {
         mdx_html.push_str("\n**Authors**  \n");
-        mdx_html.push_str(&authors);
-        mdx_html.push_str("\n");
+        mdx_html.push_str(authors);
+        mdx_html.push('\n');
     }
     if let Some(editors) = &metadata.editors {
         mdx_html.push_str("\n**Editors**  \n");
-        mdx_html.push_str(&editors);
-        mdx_html.push_str("\n");
+        mdx_html.push_str(editors);
+        mdx_html.push('\n');
     }
     if let Some(contributors) = &metadata.contributors {
         mdx_html.push_str("\n**Contributors**  \n");
-        mdx_html.push_str(&contributors);
-        mdx_html.push_str("\n");
+        mdx_html.push_str(contributors);
+        mdx_html.push('\n');
     }
 
     mdx_html
 }
 
-fn generate_notes_heading(markdown: &String) -> String {
+fn generate_notes_heading(markdown: &str) -> String {
     let mut mdx_notes_heading = String::new();
 
     let footnote_regex = Regex::new(r"\[\^1\]").unwrap();
