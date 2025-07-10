@@ -9,7 +9,7 @@ use crate::validators;
 use crate::validators::ArticleFileData;
 
 /// Transform a list of entries into a list of strings according to the Chicago bibliography style.
-pub fn entries_to_strings(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<String> {
+pub fn entries_to_strings(entries: &[MatchedCitationDisambiguated]) -> Vec<String> {
     let sorted_entries = sort_entries(entries);
     let mut strings_output: Vec<String> = Vec::new();
 
@@ -272,8 +272,8 @@ fn add_journal_volume_number_pages(
 }
 
 /// Sort entries by author's last name.
-fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitationDisambiguated> {
-    let mut sorted_entries = entries.clone();
+fn sort_entries(entries: &[MatchedCitationDisambiguated]) -> Vec<MatchedCitationDisambiguated> {
+    let mut sorted_entries = entries.to_vec();
 
     sorted_entries.sort_by(|a, b| {
         let a_authors = a.entry.author().unwrap_or_default();

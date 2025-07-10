@@ -167,7 +167,7 @@ fn append_to_file(path: &str, content: &str) -> std::io::Result<()> {
     Ok(())
 }
 
-fn generate_mdx_bibliography(entries: &Vec<MatchedCitationDisambiguated>) -> String {
+fn generate_mdx_bibliography(entries: &[MatchedCitationDisambiguated]) -> String {
     let mut bib_html = String::new();
 
     if entries.is_empty() {
