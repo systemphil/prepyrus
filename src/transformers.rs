@@ -1,5 +1,6 @@
 use biblatex::Person;
 use biblatex::{Entry, EntryType};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use utils::BiblatexUtils;
 use validators::{MatchedCitation, MatchedCitationDisambiguated};
@@ -171,20 +172,25 @@ fn generate_contributors(
     contributor_description: String,
 ) -> String {
     let mut contributors_str = String::new();
-    if contributors.len() > 1 {
-        contributors_str.push_str(&format!("{} by ", contributor_description));
-        for (i, person) in contributors.iter().enumerate() {
-            if i == contributors.len() - 1 {
-                contributors_str.push_str(&format!("and {} {}. ", person.given_name, person.name));
-            } else {
-                contributors_str.push_str(&format!("{} {}, ", person.given_name, person.name));
+    match contributors.len().cmp(&1) {
+        Ordering::Greater => {
+            contributors_str.push_str(&format!("{} by ", contributor_description));
+            for (i, person) in contributors.iter().enumerate() {
+                if i == contributors.len() - 1 {
+                    contributors_str
+                        .push_str(&format!("and {} {}. ", person.given_name, person.name));
+                } else {
+                    contributors_str.push_str(&format!("{} {}, ", person.given_name, person.name));
+                }
             }
         }
-    } else if contributors.len() == 1 {
-        contributors_str.push_str(&format!(
-            "{} by {} {}. ",
-            contributor_description, contributors[0].given_name, contributors[0].name
-        ));
+        Ordering::Equal => {
+            contributors_str.push_str(&format!(
+                "{} by {} {}. ",
+                contributor_description, contributors[0].given_name, contributors[0].name
+            ));
+        }
+        Ordering::Less => {}
     }
     contributors_str
 }
@@ -200,30 +206,36 @@ fn add_authors(author: Vec<biblatex::Person>, bib_html: &mut String) {
 
 ///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
 fn format_authors(author: Vec<biblatex::Person>) -> String {
-    if author.len() > 2 {
-        return format!("{}, {} et al. ", author[0].name, author[0].given_name);
-    } else if author.len() == 2 {
-        // In Chicago style, when listing multiple authors in a bibliography entry,
-        // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent
-        // authors' names are written in standard order (i.e., "First Last").
-        // This rule helps differentiate the primary author from co-authors.
-        return format!(
-            "{}, {} and {} {}. ",
-            author[0].name, author[0].given_name, author[1].given_name, author[1].name
-        );
-    } else {
-        return format!("{}, {}. ", author[0].name, author[0].given_name);
+    match author.len().cmp(&2) {
+        Ordering::Greater => {
+            format!("{}, {} et al. ", author[0].name, author[0].given_name)
+        }
+        Ordering::Equal => {
+            // In Chicago style, when listing multiple authors in a bibliography entry,
+            // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent
+            // authors' names are written in standard order (i.e., "First Last").
+            // This rule helps differentiate the primary author from co-authors.
+            format!(
+                "{}, {} and {} {}. ",
+                author[0].name, author[0].given_name, author[1].given_name, author[1].name
+            )
+        }
+        Ordering::Less => {
+            format!("{}, {}. ", author[0].name, author[0].given_name)
+        }
     }
 }
 
 ///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
 fn format_authors_last_name_only(author: Vec<biblatex::Person>) -> String {
-    if author.len() > 2 {
-        return format!("{} et al.", author[0].name);
-    } else if author.len() == 2 {
-        return format!("{} and {}", author[0].name, author[1].name);
-    } else {
-        return format!("{}", author[0].name);
+    match author.len().cmp(&2) {
+        Ordering::Greater => {
+            format!("{} et al.", author[0].name)
+        }
+        Ordering::Equal => {
+            format!("{} and {}", author[0].name, author[1].name)
+        }
+        Ordering::Less => author[0].name.to_string(),
     }
 }
 
