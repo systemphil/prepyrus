@@ -343,11 +343,7 @@ fn verify_citations_format(citations: &Vec<String>) -> Result<(), io::Error> {
 fn create_citations_set(citations: Vec<String>) -> Vec<String> {
     let mut citations_set = Vec::new();
     for citation in citations {
-        let prepared_citation = citation
-            .splitn(2, ',')
-            .next()
-            .unwrap_or(&citation)
-            .to_string();
+        let prepared_citation = citation.split(',').next().unwrap_or(&citation).to_string();
         if !citations_set.contains(&prepared_citation) {
             citations_set.push(prepared_citation);
         }
