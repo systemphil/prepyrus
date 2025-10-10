@@ -1,5 +1,6 @@
 use biblatex::Person;
 use biblatex::{Entry, EntryType};
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use utils::BiblatexUtils;
 use validators::{MatchedCitation, MatchedCitationDisambiguated};
@@ -9,7 +10,7 @@ use crate::validators;
 use crate::validators::ArticleFileData;
 
 /// Transform a list of entries into a list of strings according to the Chicago bibliography style.
-pub fn entries_to_strings(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<String> {
+pub fn entries_to_strings(entries: &[MatchedCitationDisambiguated]) -> Vec<String> {
     let sorted_entries = sort_entries(entries);
     let mut strings_output: Vec<String> = Vec::new();
 
@@ -64,7 +65,7 @@ pub fn disambiguate_matched_citations(
         let author_year_key = format!("{}-{}", author_last_name, year);
         author_year_groups
             .entry(author_year_key)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(citation);
     }
 
@@ -126,7 +127,7 @@ fn transform_book_entry(matched_citation: &MatchedCitationDisambiguated) -> Stri
     let title = extract_title(&matched_citation.entry);
     let publisher = extract_publisher(&matched_citation.entry);
     let address = extract_address(&matched_citation.entry);
-    let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
+    let translators = matched_citation.entry.translator().unwrap_or_default();
     let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
     add_authors(author, &mut book_string);
@@ -150,7 +151,7 @@ fn transform_article_entry(matched_citation: &MatchedCitationDisambiguated) -> S
     let volume = extract_volume(&matched_citation.entry);
     let number = extract_number(&matched_citation.entry);
     let pages = extract_pages(&matched_citation.entry);
-    let translators = matched_citation.entry.translator().unwrap_or(Vec::new());
+    let translators = matched_citation.entry.translator().unwrap_or_default();
     let doi = matched_citation.entry.doi().unwrap_or("".to_string());
 
     add_authors(author, &mut article_string);
@@ -171,20 +172,25 @@ fn generate_contributors(
     contributor_description: String,
 ) -> String {
     let mut contributors_str = String::new();
-    if contributors.len() > 1 {
-        contributors_str.push_str(&format!("{} by ", contributor_description));
-        for (i, person) in contributors.iter().enumerate() {
-            if i == contributors.len() - 1 {
-                contributors_str.push_str(&format!("and {} {}. ", person.given_name, person.name));
-            } else {
-                contributors_str.push_str(&format!("{} {}, ", person.given_name, person.name));
+    match contributors.len().cmp(&1) {
+        Ordering::Greater => {
+            contributors_str.push_str(&format!("{} by ", contributor_description));
+            for (i, person) in contributors.iter().enumerate() {
+                if i == contributors.len() - 1 {
+                    contributors_str
+                        .push_str(&format!("and {} {}. ", person.given_name, person.name));
+                } else {
+                    contributors_str.push_str(&format!("{} {}, ", person.given_name, person.name));
+                }
             }
         }
-    } else if contributors.len() == 1 {
-        contributors_str.push_str(&format!(
-            "{} by {} {}. ",
-            contributor_description, contributors[0].given_name, contributors[0].name
-        ));
+        Ordering::Equal => {
+            contributors_str.push_str(&format!(
+                "{} by {} {}. ",
+                contributor_description, contributors[0].given_name, contributors[0].name
+            ));
+        }
+        Ordering::Less => {}
     }
     contributors_str
 }
@@ -200,30 +206,36 @@ fn add_authors(author: Vec<biblatex::Person>, bib_html: &mut String) {
 
 ///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
 fn format_authors(author: Vec<biblatex::Person>) -> String {
-    if author.len() > 2 {
-        return format!("{}, {} et al. ", author[0].name, author[0].given_name);
-    } else if author.len() == 2 {
-        // In Chicago style, when listing multiple authors in a bibliography entry,
-        // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent
-        // authors' names are written in standard order (i.e., "First Last").
-        // This rule helps differentiate the primary author from co-authors.
-        return format!(
-            "{}, {} and {} {}. ",
-            author[0].name, author[0].given_name, author[1].given_name, author[1].name
-        );
-    } else {
-        return format!("{}, {}. ", author[0].name, author[0].given_name);
+    match author.len().cmp(&2) {
+        Ordering::Greater => {
+            format!("{}, {} et al. ", author[0].name, author[0].given_name)
+        }
+        Ordering::Equal => {
+            // In Chicago style, when listing multiple authors in a bibliography entry,
+            // only the first author's name is inverted (i.e., "Last, First"). The second and subsequent
+            // authors' names are written in standard order (i.e., "First Last").
+            // This rule helps differentiate the primary author from co-authors.
+            format!(
+                "{}, {} and {} {}. ",
+                author[0].name, author[0].given_name, author[1].given_name, author[1].name
+            )
+        }
+        Ordering::Less => {
+            format!("{}, {}. ", author[0].name, author[0].given_name)
+        }
     }
 }
 
 ///  Returns Chicago style format for authors. Handles the case when there are multiple authors.
 fn format_authors_last_name_only(author: Vec<biblatex::Person>) -> String {
-    if author.len() > 2 {
-        return format!("{} et al.", author[0].name);
-    } else if author.len() == 2 {
-        return format!("{} and {}", author[0].name, author[1].name);
-    } else {
-        return format!("{}", author[0].name);
+    match author.len().cmp(&2) {
+        Ordering::Greater => {
+            format!("{} et al.", author[0].name)
+        }
+        Ordering::Equal => {
+            format!("{} and {}", author[0].name, author[1].name)
+        }
+        Ordering::Less => author[0].name.to_string(),
     }
 }
 
@@ -272,8 +284,8 @@ fn add_journal_volume_number_pages(
 }
 
 /// Sort entries by author's last name.
-fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitationDisambiguated> {
-    let mut sorted_entries = entries.clone();
+fn sort_entries(entries: &[MatchedCitationDisambiguated]) -> Vec<MatchedCitationDisambiguated> {
+    let mut sorted_entries = entries.to_vec();
 
     sorted_entries.sort_by(|a, b| {
         let a_authors = a.entry.author().unwrap_or_default();
@@ -292,7 +304,7 @@ fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitat
         // Compare by year
         let a_year = &a.year_disambiguated;
         let b_year = &b.year_disambiguated;
-        let cmp_year = a_year.cmp(&b_year);
+        let cmp_year = a_year.cmp(b_year);
         if cmp_year != std::cmp::Ordering::Equal {
             return cmp_year;
         }
@@ -307,7 +319,7 @@ fn sort_entries(entries: &Vec<MatchedCitationDisambiguated>) -> Vec<MatchedCitat
 }
 
 /// Helper to generate a sortable author string
-fn author_key(authors: &Vec<Person>) -> String {
+fn author_key(authors: &[Person]) -> String {
     authors
         .first()
         .map(|p| p.name.clone().to_lowercase())
@@ -317,57 +329,49 @@ fn author_key(authors: &Vec<Person>) -> String {
 /// Title of the entry.
 fn extract_title(entry: &Entry) -> String {
     let title_spanned = entry.title().unwrap();
-    let title = BiblatexUtils::extract_spanned_chunk(title_spanned);
-    title
+    BiblatexUtils::extract_spanned_chunk(title_spanned)
 }
 
 /// Publisher of the entry.
 fn extract_publisher(entry: &Entry) -> String {
     let publisher_spanned = entry.publisher().unwrap();
-    let publisher = BiblatexUtils::extract_publisher(&publisher_spanned);
-    publisher
+    BiblatexUtils::extract_publisher(&publisher_spanned)
 }
 
 /// Address of the publisher.
 fn extract_address(entry: &Entry) -> String {
     let address_spanned = entry.address().unwrap();
-    let address = BiblatexUtils::extract_spanned_chunk(address_spanned);
-    address
+    BiblatexUtils::extract_spanned_chunk(address_spanned)
 }
 
 /// Year of entry.
 fn extract_date(entry: &Entry) -> i32 {
     let date = entry.date().unwrap();
-    let year = BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap();
-    year
+    BiblatexUtils::extract_year_from_date(&date, entry.key.clone()).unwrap()
 }
 
 /// Name of the journal of the article.
 fn extract_journal(entry: &Entry) -> String {
     let journal_spanned = entry.journal().unwrap();
-    let journal = BiblatexUtils::extract_spanned_chunk(&journal_spanned);
-    journal
+    BiblatexUtils::extract_spanned_chunk(journal_spanned)
 }
 
 /// Volume of the journal.
 fn extract_volume(entry: &Entry) -> i64 {
     let volume_permissive = entry.volume().unwrap();
-    let volume = BiblatexUtils::extract_volume(&volume_permissive);
-    volume
+    BiblatexUtils::extract_volume(&volume_permissive)
 }
 
 /// Number of the journal.
 fn extract_number(entry: &Entry) -> String {
     let number_spanned = entry.number().unwrap();
-    let number = BiblatexUtils::extract_spanned_chunk(&number_spanned);
-    number
+    BiblatexUtils::extract_spanned_chunk(number_spanned)
 }
 
 /// Pages of the article.
 fn extract_pages(entry: &Entry) -> String {
     let pages_permissive = entry.pages().unwrap();
-    let pages = BiblatexUtils::extract_pages(&pages_permissive);
-    pages
+    BiblatexUtils::extract_pages(&pages_permissive)
 }
 
 /// Create disambiguated citation with letter (e.g., "@hegel2020logic, 123" -> "Hegel 2020a")

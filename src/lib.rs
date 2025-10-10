@@ -178,7 +178,7 @@ impl Prepyrus {
     /// Retrieve all bibliography entries from the bibliography file.
     /// Returns a vector of `biblatex::Entry`.
     pub fn get_all_bib_entries(bib_file: &str) -> Result<Vec<biblatex::Entry>, BibliographyError> {
-        Ok(BiblatexUtils::retrieve_bibliography_entries(bib_file)?)
+        BiblatexUtils::retrieve_bibliography_entries(bib_file)
     }
 
     /// Retrieve all MDX file paths from the target directory.
@@ -196,7 +196,7 @@ impl Prepyrus {
         mdx_paths: Vec<String>,
         all_entries: &Vec<Entry>,
     ) -> Result<Vec<ArticleFileData>, Error> {
-        validators::verify_mdx_files(mdx_paths, &all_entries)
+        validators::verify_mdx_files(mdx_paths, all_entries)
     }
 
     /// Process the MDX files by injecting bibliography and other details into the MDX files.

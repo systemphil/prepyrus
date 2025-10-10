@@ -45,7 +45,7 @@ impl BiblatexUtils {
                 DateValue::Before(datetime) => Ok(datetime.year),
                 DateValue::Between(start, _end) => Ok(start.year), // Or use end.year
             },
-            _ => return Err(format!("Unable to retrieve year for: {}", reference)),
+            _ => Err(format!("Unable to retrieve year for: {}", reference)),
         }
     }
 
@@ -103,7 +103,7 @@ impl BiblatexUtils {
     }
 
     /// Extract the publisher from a `Spanned<Chunk>` vector.
-    pub fn extract_publisher(publisher_data: &Vec<Vec<Spanned<Chunk>>>) -> String {
+    pub fn extract_publisher(publisher_data: &[Vec<Spanned<Chunk>>]) -> String {
         publisher_data
             .iter()
             .flat_map(|inner_vec| {
@@ -171,7 +171,7 @@ impl Utils {
     /// Extract paths of MDX files from a directory and its subdirectories.
     /// Optionally, provide a list of paths to ignore.
     pub fn extract_paths(path: &str, ignore_paths: Option<Vec<String>>) -> io::Result<Vec<String>> {
-        let exceptions = ignore_paths.unwrap_or_else(|| Vec::new());
+        let exceptions = ignore_paths.unwrap_or_default();
         let mdx_paths_raw = Self::extract_mdx_paths(path).unwrap();
         let mdx_paths = Self::filter_mdx_paths_for_exceptions(mdx_paths_raw, exceptions);
 
